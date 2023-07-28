@@ -1,4 +1,4 @@
-import re, pickle, os, platform
+import re, pickle, os, platform, json
 
 def globalize_regex_patterns():
     global LUT_in_pattern, LUT_in6_pattern, FF_in_pattern, FF_out_pattern, CLB_out_pattern, MUXED_CLB_out_pattern, \
@@ -44,54 +44,23 @@ def load_data(Path, FileName):
 
 def init_paths():
     os_name = platform.system()
-    init = load_data('.', 'init.data')
-    root = init[os_name]['root']
-    store_path = init[os_name]['store_path']
+    with open('init.json') as file:
+        init = json.load(file)
 
-    return root, store_path
+    root = init[os_name]['root']
+    Data_path = init[os_name]['Data_path']
+
+    return root, Data_path
 
 ############################################################
-'''root, Data_path = init_paths()
-store_path = os.path.join(Data_path, 'Store')
+root, Data_path = init_paths()
+store_path = os.path.join(Data_path, 'Store2')
 load_path = os.path.join(Data_path, 'Load')
 graph_path = os.path.join(Data_path, 'Compressed Graphs')
 excluded_path = os.path.join(Data_path, 'No-Path Ports')
-const_path = os.path.join(Data_path, 'Constraints')'''
-
-####### Constant Objects
-'''INTs = set()
-CLBs = set()
-long_capture_process_time = 100
-long_TC_process_time = 140
-reconstruction = False
-wires_dict = load_data(load_path, 'wires_dict.data')
-tiles_coord_dict = get_tiles_coord_dict(wires_dict)
-clb_site_dict = load_data(load_path, 'clb_site_dict.data')'''
-
-####### main_TC Objects
-'''TC = []
-not_TC = []
-xor_TC = []
-LUTs_dict = {}
-FFs_dict = {}
-LUTs_map = []
-covered_pips = []
-configurations = []
-tried_pips = set()
-num_long_process = 0
-start_TC_time = 0
-counter = 0
-blocked_FFs = set()
-blocked = set()
-New_TC = True'''
-
-####### PIP Objects
-'''long_long_pip = False
-reversed_pip = None
-bidir_pip = False
-long_process = False
-same_not_launch = False
-other_pip_end = set()'''
+const_path = os.path.join(Data_path, 'Constraints')
+fasm_path = os.path.join(Data_path, 'FASM')
+DLOC_path = os.path.join(Data_path, 'DLOC_dicts')
 
 ######## LUT Dual Mode
 LUT_Dual = True
