@@ -14,14 +14,13 @@ from itertools import product
 
 start_time = time.time()
 coord = 'X46Y90'
-load_path = r'C:\Users\t26607bb\Desktop\CPS_Project\New Path Search\Data\Store2'
 ################################
 covered_pips = set()
 errors = []
 path_length = []
 max_length_pip = (0, None, None)
-for TC_idx, file in enumerate(os.listdir(load_path)):
-    TC = load_data(load_path, file)
+for TC_idx, file in enumerate(os.listdir(GM.store_path)):
+    TC = load_data(GM.store_path, file)
     vd.check_LUT_utel(TC)
     #if not vd.check_collision(TC):
         #errors.append(f'TC{TC_idx}')

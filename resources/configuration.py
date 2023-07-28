@@ -719,17 +719,17 @@ class Configuration():
     def fill_2(self, dev, queue, coord, TC_idx, c):
         int_tile = f'INT_{coord}'
         while not self.finish_TC(queue, free_cap=16):
-            out_nodes = dev.get_nodes(tile=int_tile, mode='out')
+            out_nodes = {edge[1] for edge in queue}
             invalid_out_nodes = set()
             for node in out_nodes:
-                in_edges = set(dev.G.in_edges(node.name))
+                in_edges = set(dev.G.in_edges(node))
                 if not in_edges & set(queue):
                     invalid_out_nodes.add(node)
 
             out_nodes = out_nodes - invalid_out_nodes
 
             for node in out_nodes:
-                self.G.add_edge('out_node', node.name, weight=0)
+                self.G.add_edge('out_node', node, weight=0)
 
             self.create_CUT(coord, None)
             try:
@@ -755,7 +755,7 @@ class Configuration():
                 continue
 
             main_path = self.CUTs[-1].main_path.str_nodes()
-            if len(main_path) > (GM.pips_length_dict[pip] + 5):
+            if len(main_path) > (GM.pips_length_dict[pip] + 10):
                 self.remove_CUT(dev)
                 self.G.remove_nodes_from(['s2', 't2'])
                 queue.append(queue.pop(0))
