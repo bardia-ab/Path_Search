@@ -231,7 +231,8 @@ class Configuration():
         self.update_FFs('blocked', cut.FFs_set)
         self.set_LUTs(device, 'blocked', cut.LUTs_func_dict)
         #increase cost
-        self.inc_cost(device)
+        main_path = self.CUTs[-1].main_path
+        self.inc_cost(device, main_path, 5)
         self.remove_LUT_occupied_sources(device)
 
     def block_CUT(self, device):
@@ -376,12 +377,9 @@ class Configuration():
 
         return global_LUTs_func_dict
 
-    def inc_cost(self, device):
-        cut = self.CUTs[-1]
-        paths = {path for path in cut.paths if path.path_type in {'path_in', 'path_out', 'main_path'}}
-        for path in paths:
-            for pip in path.pips:
-                device.G.get_edge_data(*pip)['weight'] += 3
+    def inc_cost(self, device, path, weight):
+        for edge in path.edges:
+            device.G.get_edge_data(*edge)['weight'] += weight
 
     def pick_PIP(self, queue):
         while (set(queue) - self.tried_pips):
@@ -709,34 +707,46 @@ class Configuration():
                 continue
 
             self.G.remove_nodes_from(['s2', 't2'])
+            self.inc_cost(dev, not_path, 1)
             self.finalize_CUT(dev)
             queue = [pip for pip in queue if pip not in self.CUTs[-1].covered_pips]
+
             print(f'TC{TC_idx}- Found Paths: {len(self.CUTs)}')
             print(f'Remaining PIPs: {len(queue)}')
 
         return queue
 
-    def fill_2(self, dev, queue, coord, TC_idx):
+    def fill_2(self, dev, queue, coord, TC_idx, c):
         int_tile = f'INT_{coord}'
         while not self.finish_TC(queue, free_cap=16):
-            in_nodes = {node.name for node in dev.get_nodes(tile=int_tile, mode='in')}
-            for node in in_nodes:
-                self.G.add_edge(node, 'in_node', weight=0)
+            out_nodes = dev.get_nodes(tile=int_tile, mode='out')
+            invalid_out_nodes = set()
+            for node in out_nodes:
+                in_edges = set(dev.G.in_edges(node.name))
+                if not in_edges & set(queue):
+                    invalid_out_nodes.add(node)
+
+            out_nodes = out_nodes - invalid_out_nodes
+
+            for node in out_nodes:
+                self.G.add_edge('out_node', node.name, weight=0)
 
             self.create_CUT(coord, None)
             try:
-                path_in = path_finder(self.G, 's', 'in_node', weight='weight', dummy_nodes=['s', 'in_node'])
-                path_in = Path(dev, self, path_in, 'path_in')
-                self.add_path(dev, path_in)
+                path_out = path_finder(self.G, 'out_node', 't', weight='weight', dummy_nodes=['t', 'out_node'])
+                path_out = Path(dev, self, path_out, 'path_out')
+                self.add_path(dev, path_out)
             except:
                 self.remove_CUT(dev)
                 queue.append(queue.pop(0))
                 continue
 
             try:
-                path_out = path_finder(self.G, path_in[-1].name, 't', weight='weight', dummy_nodes=['t'])
-                path_out = Path(dev, self, path_out[1:], 'path_out')
-                self.add_path(dev, path_out)
+                self.G.remove_edge('out_node', path_out[0].name)
+                self.unblock_nodes(dev, path_out[0].name)
+                path_in = path_finder(self.G, 's', path_out[0].name, weight='weight', dummy_nodes=['s'])
+                path_in = Path(dev, self, path_in[:-1], 'path_in')
+                self.add_path(dev, path_in)
                 pip = (path_in[-1].name, path_out[0].name)
                 self.CUTs[-1].pip = pip
             except:
@@ -768,12 +778,18 @@ class Configuration():
                 queue.append(queue.pop(0))
                 continue
 
+            self.inc_cost(dev, not_path, 1)
             self.G.remove_nodes_from(['s2', 't2'])
             self.finalize_CUT(dev)
+            l1 = len(queue)
             queue = [pip for pip in queue if pip not in self.CUTs[-1].covered_pips]
+            l2 = len(queue)
+            if l1 == l2:
+                c += 1
+
             print(f'TC{TC_idx}- Found Paths: {len(self.CUTs)}')
             print(f'Remaining PIPs: {len(queue)}')
 
-        self.G.remove_node('in_node')
+        self.G.remove_node('out_node')
 
         return queue

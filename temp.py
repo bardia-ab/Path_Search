@@ -32,10 +32,11 @@ GM.nodes_dict = get_nodes_dict(dev.G, coord)
 dev.get_pips_length(coord)
 queue = list(GM.pips_length_dict)
 TC_idx = 0
+c = 0
 while queue:
     TC = Configuration(dev)
     queue = TC.sort_pips(queue)
-    queue = TC.fill_2(dev, queue, coord, TC_idx)
+    queue = TC.fill_2(dev, queue, coord, TC_idx, c)
 
     if TC.CUTs:
         vd.check_LUT_utel(TC)
@@ -44,4 +45,5 @@ while queue:
     else:
         break
 
+print('Paths with no new PIPs: ', c)
 print('--- %s seconds ---' %(time.time() - start_time))
