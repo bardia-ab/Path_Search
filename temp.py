@@ -15,12 +15,15 @@ from itertools import product
 start_time = time.time()
 coord = 'X46Y90'
 #################################################
-with open(r'C:\Users\t26607bb\Desktop\CPS_Project\New Path Search\Data\Compressed Graphs\G_ZU9_INT_X46Y90.data', 'rb') as data:
+#graph_parh = r'C:\Users\t26607bb\Desktop\CPS_Project\New Path Search\Data\Compressed Graphs\G_ZU9_INT_X46Y90.data'
+graph_path = '/home/bardia/Desktop/bardia/Timing_Characterization/Data/Compressed Graphs/G_ZU9_INT_X46Y90.data'
+with open(graph_path, 'rb') as data:
     G = pickle.load(data)
 G = Arch.remove_FF_PIPs(G)
 dev = Arch(G)
 #################################################
-store_path = r'C:\Users\t26607bb\Desktop\CPS_Project\New Path Search\Data\Store2'
+#store_path = r'C:\Users\t26607bb\Desktop\CPS_Project\New Path Search\Data\Store2'
+store_path = '/home/bardia/Desktop/bardia/Timing_Characterization/Data/Store2'
 create_folder(store_path)
 int_tile = dev.get_tiles(type='INT', coordinate=coord).pop()
 

@@ -164,7 +164,7 @@ class Arch:
                 else:
                     weight = 30  # CLB_Route_Thru
             else:
-                pass
+                continue
                 '''if self.get_tile(edge[0]).startswith('INT') and self.get_tile(edge[1]).startswith('INT'):
                     weight = 20  # INT_Tile -> INT_Tile
                 else:
