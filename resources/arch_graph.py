@@ -1,3 +1,4 @@
+import heapq
 from resources.tile import *
 from resources.primitive import *
 from Functions import extend_dict
@@ -135,6 +136,27 @@ class Arch:
         elif type == 'CLB_muxed':
             return set(filter(lambda x: re.match(GM.MUXED_CLB_out_pattern, x.name), all_nodes))
 
+    def get_pips_length(self, coordinate):
+        tile = f'INT_{coordinate}'
+        pips = self.get_edges(u_tile=tile, v_tile=tile)
+        sources = {node.name for node in self.get_nodes(clb_node_type='FF_out')}
+        sinks = {node.name for node in self.get_nodes(clb_node_type='FF_in')}
+
+        for src in sources:
+            self.G.add_edge('s', src, weight=0)
+
+        for sink in sinks:
+            self.G.add_edge(sink, 't', weight=0)
+
+        for pip in pips:
+            try:
+                path_in = nx.shortest_path(self.G, 's', pip[0], weight='weight')[1:]
+                path_out = nx.shortest_path(self.G, pip[1], 't', weight='weight')[:-1]
+                GM.pips_length_dict[(pip.u, pip.v)] = len(path_in + path_out)
+            except:
+                continue
+
+        self.G.remove_nodes_from(['s', 't'])
 
     @staticmethod
     def get_tile(wire, delimiter='/'):

@@ -66,6 +66,7 @@ DLOC_path = os.path.join(Data_path, 'DLOC_dicts')
 LUT_Dual = True
 block_mode = 'global'   #global|local
 route_thru = True
+pips_length_dict = {}
 
 #globalize_regex_patterns()
 LUT_in_pattern = re.compile('^CLE.*_[A-H][1-6]$')

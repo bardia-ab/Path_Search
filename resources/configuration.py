@@ -2,6 +2,7 @@ import networkx as nx
 
 from resources.cut import CUT
 from resources.node import Node
+from resources.path import Path
 from Functions import *
 from itertools import product
 import Global_Module as GM
@@ -409,10 +410,13 @@ class Configuration():
 
         return pip
 
-    def sort_pips(self, pips):
+    def sort_pips2(self, pips):
         pips_dict = get_pips_dict(GM.nodes_dict, pips)
 
         return sorted(pips, key=pips_dict.get, reverse=True)
+
+    def sort_pips(self, pips):
+        return sorted(pips, key=lambda x: GM.pips_length_dict[x], reverse=True)
 
     def finish_TC(self, queue, free_cap=8):
         #capacity = free_cap - len(self.CUTs)
@@ -647,8 +651,64 @@ class Configuration():
 
         self.G.remove_edges_from(removed_edges)
 
-
     def restore_route_thrus(self):
         for edge in self.route_thrus:
             if not set(edge) & self._block_nodes:
                 self.G.add_edge(*edge, weight=self.route_thrus[edge])
+
+    def fill_1(self, dev, queue, coord, TC_idx):
+        while not self.finish_TC(queue, free_cap=16):
+            pip = self.pick_PIP(queue)
+            if not pip:
+                continue
+
+            self.create_CUT(coord, pip)
+            try:
+                path = path_finder(self.G, pip[1], 't', weight="weight", dummy_nodes=['t'])
+                path1 = Path(dev, self, path, 'path_out')
+                self.add_path(dev, path1)
+            except:
+                self.remove_CUT(dev)
+                queue.append(queue.pop(0))
+                continue
+
+            self.unblock_nodes(dev, pip[0])
+            try:
+                path = path_finder(self.G, 's', pip[0], weight="weight", dummy_nodes=['s'])
+                path1 = Path(dev, self, path, 'path_in')
+                self.add_path(dev, path1)
+            except:
+                self.block_nodes = pip[0]
+                self.remove_CUT(dev)
+                queue.append(queue.pop(0))
+                continue
+
+            main_path = self.CUTs[-1].main_path.str_nodes()
+            if len(main_path) > (GM.pips_length_dict[pip] + 5):
+                self.remove_CUT(dev)
+                self.G.remove_nodes_from(['s2', 't2'])
+                queue.append(queue.pop(0))
+                continue
+
+            not_LUT_ins = dev.get_nodes(is_i6=False, clb_node_type='LUT_in', bel=path1[0].bel, tile=path1[0].tile)
+            for LUT_in in not_LUT_ins:
+                self.G.add_edge(LUT_in.name, 't2', weight=0)
+
+            for node in main_path:
+                self.G.add_edge('s2', node, weight=0)
+
+            try:
+                path = path_finder(self.G, 's2', 't2', weight="weight", dummy_nodes=['s2', 't2'])
+                path1 = Path(dev, self, path, 'not')
+                self.add_path(dev, path1)
+            except:
+                self.remove_CUT(dev)
+                self.G.remove_nodes_from(['s2', 't2'])
+                queue.append(queue.pop(0))
+                continue
+
+            self.G.remove_nodes_from(['s2', 't2'])
+            self.finalize_CUT(dev)
+            queue = [pip for pip in queue if pip not in self.CUTs[-1].covered_pips]
+            print(f'TC{TC_idx}- Found Paths: {len(self.CUTs)}')
+            print(f'Remaining PIPs: {len(queue)}')

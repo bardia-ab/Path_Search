@@ -166,9 +166,7 @@ def get_wires_list(lines, delimiter='/'):
 
 def remove_no_path_pips(G, queue, coord):
     tile = f'INT_{coord}'
-#    excluded_path = r'C:\Users\t26607bb\Desktop\CPS_Project\New Path Search\Data\No-Path Ports'
-    excluded_path = '/home/bardia/Desktop/bardia/Timing_Characterization/Data/No-Path Ports'
-    no_path_ports = load_data(excluded_path, '{}.data'.format(tile))
+    no_path_ports = load_data(GM.excluded_path, '{}.data'.format(tile))
     pips = set()
     for port in no_path_ports:
         pips.update(G.in_edges(port))
