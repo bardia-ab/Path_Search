@@ -35,7 +35,7 @@ TC_idx = 0
 while queue:
     TC = Configuration(dev)
     queue = TC.sort_pips(queue)
-    TC.fill_1(dev, queue, coord, TC_idx)
+    queue = TC.fill_2(dev, queue, coord, TC_idx)
 
     if TC.CUTs:
         vd.check_LUT_utel(TC)
