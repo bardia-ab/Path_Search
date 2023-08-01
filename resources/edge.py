@@ -60,3 +60,17 @@ class Edge:
     @staticmethod
     def get_port(wire, delimiter='/'):
         return wire.split(delimiter)[1]
+
+    @staticmethod
+    def is_wire(edge):
+        if Edge.get_tile(edge[0]) != Edge.get_tile(edge[1]):
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def is_pip(edge):
+        if Edge.get_tile(edge[0]) == Edge.get_tile(edge[1]):
+            return True
+        else:
+            return False
