@@ -1,5 +1,5 @@
 import networkx as nx
-import re, os, pickle, shutil
+import re, os, pickle, shutil, bz2
 import Global_Module as GM
 from itertools import count, product
 from heapq import heappop, heappush
@@ -82,7 +82,7 @@ def extract_path_pips(path):
 
     return pips
 
-def store_data(Path, FileName, data, SubFolder=False, FolderName=None):
+def store_data(Path, FileName, data, SubFolder=False, FolderName=None, compress=True):
     if SubFolder:
         folder_path = os.path.join(Path, FolderName)
         try:
@@ -95,12 +95,23 @@ def store_data(Path, FileName, data, SubFolder=False, FolderName=None):
     else:
         data_path = os.path.join(Path, FileName)
 
-    with open(data_path, 'wb') as file:
-        pickle.dump(data, file)
+    if compress:
+        ofile = bz2.BZ2File(data_path, 'wb')
+        pickle.dump(data, ofile)
+        ofile.close()
+    else:
+        with open(data_path, 'wb') as file:
+            pickle.dump(data, file)
 
-def load_data(Path, FileName):
-    with open(os.path.join(Path, FileName), 'rb') as file:
-        data = pickle.load(file)
+def load_data(Path, FileName, compress=True):
+    data_path = os.path.join(Path, FileName)
+    if compress:
+        ifile = bz2.BZ2File(data_path, 'rb')
+        data = pickle.load(ifile)
+        ifile.close()
+    else:
+        with open(data_path, 'rb') as file:
+            data = pickle.load(file)
 
     return data
 
