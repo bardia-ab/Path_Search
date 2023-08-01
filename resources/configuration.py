@@ -2,7 +2,9 @@ import networkx as nx
 
 from resources.cut import CUT
 from resources.node import Node
+from resources.edge import Edge
 from resources.path import Path
+from resources.primitive import LUT
 from Functions import *
 from itertools import product
 import Global_Module as GM
@@ -16,6 +18,7 @@ class Configuration():
         self.FFs                    = device.gen_FFs()
         self.LUTs                   = device.gen_LUTs()
         self._block_nodes           = set()
+        self._block_edges           = set()
         self.CD                     = {'W_T': None, 'W_B': None, 'E_T': None, 'E_B': None}
         self.CUTs                   = []
         self.tried_pips             = set()
@@ -25,11 +28,78 @@ class Configuration():
         self.assign_source_sink()
 
     @property
+    def block_edges(self):
+        return self._block_edges
+    
+    @block_edges.setter
+    def block_edges(self, edges):
+        if isinstance(edges, tuple):
+            edges = list(edges)
+        elif isinstance(edges, Edge):
+            edges = list(edges.name)
+            
+        for edge in edges:
+            if isinstance(edge, Edge):
+                edge = edge.name
+
+            if edge[0] == 'out_node':
+                continue
+                
+            self._block_edges.add(edge)
+            self.G.remove_edge(*edge)
+    
+    @property
     def block_nodes(self):
         return self._block_nodes
 
     @block_nodes.setter
     def block_nodes(self, nodes):
+        if isinstance(nodes, str) or isinstance(nodes, Node):
+            nodes = [nodes]
+
+        for node in nodes:
+            if isinstance(node, Node):
+                node = node.name
+
+            in_edges = list(self.G.in_edges(node))
+            self.block_edges = in_edges
+            self._block_nodes.add(node)
+                
+    def unblock_nodes(self, device, nodes):
+        if isinstance(nodes, str) or isinstance(nodes, Node):
+            nodes = [nodes]
+
+        for node in nodes:
+            if isinstance(node, Node):
+                if Node.primitive == 'LUT':
+                    blocked_subLUTs = self.get_LUTs(tile=node.tile, letter=node.bel, usage='blocked')
+                    if len(blocked_subLUTs) == 2:
+                        continue
+                    elif len(blocked_subLUTs) == 1 and node.is_i6:
+                        continue
+
+                node = node.name
+
+            try:
+                self._block_nodes.remove(node)
+            except:
+                breakpoint()
+
+            in_edges = set(device.G.in_edges(node))
+            self._block_edges = self._block_edges - in_edges
+            self.add_edges(*in_edges, device=device)
+
+    def add_edges(self, *edges, device=None, weight=None):
+        for edge in edges:
+            if edge[1] in self._block_nodes:
+                continue
+
+            if weight is None:
+                weight = device.G.get_edge_data(*edge)['weight']
+
+            self.G.add_edge(*edge, weight=weight)
+    
+    def block_nodes2(self, nodes):
         in_edges = set()
 
         if isinstance(nodes, str) or isinstance(nodes, Node):
@@ -54,23 +124,7 @@ class Configuration():
         in_edges = {edge for edge in in_edges if get_tile(edge[0]) == get_tile(edge[1])}
         self.G.remove_edges_from(in_edges)
 
-    def block_path(self, device, path):
-        #nodes = [node for node in path if node.primitive != 'LUT']
-        self.block_nodes = path
-        global_nodes = set()
-        for node in path:
-            if node.tile_type == 'INT':
-                global_nodes.update(device.get_nodes(port=node.port))
-            else:
-                global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))
-
-        global_nodes = global_nodes - set(path)
-        if GM.block_mode == 'global':
-            self.block_nodes = global_nodes
-        else:
-            self.penalize_nodes(global_nodes)
-
-    def unblock_nodes(self, device, nodes):
+    def unblock_nodes2(self, device, nodes):
         if isinstance(nodes, str) or isinstance(nodes, Node):
             nodes = [nodes]
 
@@ -99,6 +153,22 @@ class Configuration():
 
             for edge in device.G.in_edges(node):
                 self.G.add_edge(*edge, weight=device.G.get_edge_data(*edge)['weight'])
+
+    def block_path(self, device, path):
+        #nodes = [node for node in path if node.primitive != 'LUT']
+        self.block_nodes = path
+        global_nodes = set()
+        for node in path:
+            if node.tile_type == 'INT':
+                global_nodes.update(device.get_nodes(port=node.port))
+            else:
+                global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))
+
+        global_nodes = global_nodes - set(path)
+        if GM.block_mode == 'global':
+            self.block_nodes = global_nodes
+        else:
+            self.penalize_nodes(global_nodes)
 
     def penalize_nodes(self, nodes):
         in_edges = set()
@@ -164,6 +234,7 @@ class Configuration():
             self.block_nodes = pip
 
     def add_path(self, device, path):
+        self.set_CDs(device, path)  #always before block_paths
         cut = self.CUTs[-1]
         cut.paths.add(path)
         #for edge in path.edges:
@@ -182,7 +253,6 @@ class Configuration():
 
         self.update_FFs('used', FFs_set)
         self.set_LUTs(device, 'used', LUTs_func_dict)
-        self.set_CDs(device, path)
         self.block_source_sink(device, path)
 
     def remove_CUT(self, device):
@@ -206,7 +276,7 @@ class Configuration():
             else:
                 self.relax_nodes(global_nodes)
 
-            self.unblock_source_sink(device, path)
+            self.unblock_source_sink(device, path)  #always after unblock_nodes
 
 
         #reset primitive usage
@@ -234,6 +304,9 @@ class Configuration():
         main_path = self.CUTs[-1].main_path
         self.inc_cost(device, main_path, 5)
         self.remove_LUT_occupied_sources(device)
+        out_node_neighs = {node.name for node in cut.nodes if 'out_node' in self.G.predecessors(node.name)}
+        edges = set(product({'out_node'}, out_node_neighs))
+        self.G.remove_edges_from(edges)
 
     def block_CUT(self, device):
         for cut in self.CUTs:
@@ -303,7 +376,7 @@ class Configuration():
             if self.is_LUT_free(LUT_primitives[0]):
                 ### unblock i6
                 i6_node = device.get_nodes(is_i6=True, bel=node.bel, tile=node.tile)
-                if i6_node != freed_LUT_ins:    #both subLUTs are used and i5 for 5LUT is added as the input
+                if i6_node != freed_LUT_ins:
                     self.unblock_nodes(device, i6_node)
 
                 ###unblock freed LUTs
@@ -341,21 +414,29 @@ class Configuration():
         else:
             return []
 
-    def is_LUT_full(self, LUT_primitive):
+    def is_LUT_full(self, lut):
         full = True
-        LUTs = self.get_LUTs(tile=LUT_primitive.tile, letter=LUT_primitive.letter)
-        for lut in LUTs:
-            if lut.usage == 'free':
+        if isinstance(lut, LUT):
+            LUTs = self.get_LUTs(tile=lut.tile, letter=lut.letter)
+        else:           #Node
+            LUTs = self.get_LUTs(tile=lut.tile, bel=lut.bel)
+
+        for Lut in LUTs:
+            if Lut.usage == 'free':
                 full = False
                 break
 
         return full
 
-    def is_LUT_free(self, LUT_primitive):
+    def is_LUT_free(self, lut):
         free = True
-        LUTs = self.get_LUTs(tile=LUT_primitive.tile, letter=LUT_primitive.letter)
-        for lut in LUTs:
-            if lut.usage != 'free':
+        if isinstance(lut, LUT):
+            LUTs = self.get_LUTs(tile=lut.tile, letter=lut.letter)
+        else:  # Node
+            LUTs = self.get_LUTs(tile=lut.tile, bel=lut.bel)
+
+        for Lut in LUTs:
+            if Lut.usage != 'free':
                 free = False
                 break
 
@@ -396,7 +477,8 @@ class Configuration():
                     queue.append(queue.pop(0))
                     continue
 
-            if re.match(GM.LUT_in_pattern, pip[1]):
+            neigh = list(self.G.neighbors(pip[1])).pop()
+            if re.match(GM.LUT_in_pattern, neigh):
                 if self.route_thrus:
                     self.restore_route_thrus()
             else:
@@ -427,13 +509,16 @@ class Configuration():
             cond4 = False
 
         if cond2:
-            #print('Long TC Process Time!!!')
+            print('Long TC Process Time!!!')
+            print('-----------------------------------------------------')
             return True
         elif cond3:
-            #print('Queue is empty!!!')
+            print('Queue is empty!!!')
+            print('-----------------------------------------------------')
             return True
         elif not cond4:
-            #print('No path between sourse and sink!!!')
+            print('No path between sourse and sink!!!')
+            print('-----------------------------------------------------')
             return True
         else:
             return False
@@ -444,9 +529,11 @@ class Configuration():
         Sinks = list(filter(GM.Sink_pattern.match, self.G))
 
         edges = set(product({'s'}, Sources))
-        self.G.add_edges_from(edges, weight=0)
+        #self.G.add_edges_from(edges, weight=0)
+        self.add_edges(*edges, weight=0)
         edges = set(product(Sinks, {'t'}))
-        self.G.add_edges_from(edges, weight=0)
+        #self.G.add_edges_from(edges, weight=0)
+        self.add_edges(*edges, weight=0)
 
     def block_source_sink(self, device, path):
         path_types = {
@@ -500,7 +587,8 @@ class Configuration():
 
                 sources = {node.name for node in sources}
                 edges = set(product({'s'}, sources))
-                self.G.add_edges_from(edges, weight=0)
+                #self.G.add_edges_from(edges, weight=0)
+                self.add_edges(*edges, weight=0)
 
             if node_type == 'sink':
                 sink = [node for node in path if node.clb_node_type == 'FF_in']
@@ -512,7 +600,8 @@ class Configuration():
 
                 sinks = {node.name for node in sinks}
                 edges = set(product(sinks, {'t'}))
-                self.G.add_edges_from(edges, weight=0)
+                #self.G.add_edges_from(edges, weight=0)
+                self.add_edges(*edges, weight=0)
 
     def set_CDs(self, device, path):
         clock_groups = {
@@ -527,14 +616,15 @@ class Configuration():
         other_function_dict = {'launch': 'sample', 'sample': 'launch'}
         if clock_groups[path.path_type][0]:
             group = path[0].bel_group
+            tile = path[0].tile
             other_group = other_group_dict[group]
             function = clock_groups[path.path_type][0]
             other_function = other_function_dict[function]
             if self.CD[group] is None:
                 self.CD[group] = function
                 self.CD[other_group] = other_function
-                self.remove_source_sink(device, group, function)
-                self.remove_source_sink(device, other_group, other_function)
+                self.remove_source_sink(device, group, function, tile)
+                self.remove_source_sink(device, other_group, other_function, tile)
 
             else:
                 if self.CD[group] != clock_groups[path.path_type][0]:
@@ -543,27 +633,35 @@ class Configuration():
 
         if clock_groups[path.path_type][1]:
             group = path[-1].bel_group
+            tile = path[-1].tile
             other_group = other_group_dict[group]
             function = clock_groups[path.path_type][1]
             other_function = other_function_dict[function]
             if not self.CD[group]:
                 self.CD[group] = function
                 self.CD[other_group] = other_function
-                self.remove_source_sink(device, group, function)
-                self.remove_source_sink(device, other_group, other_function)
+                self.remove_source_sink(device, group, function, tile)
+                self.remove_source_sink(device, other_group, other_function, tile)
 
             else:
                 if self.CD[group] != clock_groups[path.path_type][1]:
                     breakpoint()
                     raise f"Conflict in Clock Group {group}: {clock_groups[path.path_type][1]} group"
 
-    def remove_source_sink(self, device, group, function):
+    def remove_source_sink(self, device, group, function, tile):
         if function == 'launch':
             FFs_in = set()
             LUTs_in = set()
             FFs_in.update(device.get_nodes(bel_group=group, clb_node_type='FF_in'))
-            FFs_in = {FF_in.name for FF_in in FFs_in}
             LUTs_in.update(device.get_nodes(bel_group=group, clb_node_type='LUT_in'))
+            '''if GM.block_mode == 'global':
+                FFs_in.update(device.get_nodes(bel_group=group, clb_node_type='FF_in'))
+                LUTs_in.update(device.get_nodes(bel_group=group, clb_node_type='LUT_in'))
+            else:
+                FFs_in.update(device.get_nodes(tile=tile, bel_group=group, clb_node_type='FF_in'))
+                LUTs_in.update(device.get_nodes(tile=tile, bel_group=group, clb_node_type='LUT_in'))'''
+
+            FFs_in = {FF_in.name for FF_in in FFs_in}
             LUTs_in = {LUT_in.name for LUT_in in LUTs_in}
 
             removed_edges = set(product(FFs_in, {'t'}))
@@ -573,6 +671,11 @@ class Configuration():
         elif function == 'sample':
             FFs_out = set()
             FFs_out.update(device.get_nodes(bel_group=group, clb_node_type='FF_out'))
+            '''if GM.block_mode == 'global':
+                FFs_out.update(device.get_nodes(bel_group=group, clb_node_type='FF_out'))
+            else:
+                FFs_out.update(device.get_nodes(tile=tile, bel_group=group, clb_node_type='FF_out'))'''
+
             FFs_out = {FF_out.name for FF_out in FFs_out}
 
             removed_edges = set(product({'s'}, FFs_out))
@@ -582,7 +685,8 @@ class Configuration():
             added_edges = []
 
         self.G.remove_edges_from(removed_edges)
-        self.G.add_edges_from(added_edges, weight=0)
+        #self.G.add_edges_from(added_edges, weight=0)
+        self.add_edges(*added_edges, weight=0)
 
     def remove_LUT_occupied_sources(self, device):
         launch_groups = {group for group in self.CD if self.CD[group] == 'launch'}
@@ -637,8 +741,8 @@ class Configuration():
             added_edges = []
 
         self.G.remove_edges_from(removed_edges)
-        #self.add_edges(*added_edges)
-        self.G.add_edges_from(added_edges, weight=0)
+        self.add_edges(*added_edges, weight=0)
+        #self.G.add_edges_from(added_edges, weight=0)
 
     def remove_route_thrus(self):
         LUT_ins = list(filter(lambda x: re.match(GM.LUT_in_pattern, x), self.G))
@@ -653,7 +757,9 @@ class Configuration():
     def restore_route_thrus(self):
         for edge in self.route_thrus:
             if not set(edge) & self._block_nodes:
-                self.G.add_edge(*edge, weight=self.route_thrus[edge])
+                #self.G.add_edge(*edge, weight=self.route_thrus[edge])
+                for edge in self.route_thrus:
+                    self.add_edges(edge, weight=self.route_thrus[edge])
 
     def fill_1(self, dev, queue, coord, TC_idx):
         while not self.finish_TC(queue, free_cap=16):
@@ -691,10 +797,12 @@ class Configuration():
 
             not_LUT_ins = dev.get_nodes(is_i6=False, clb_node_type='LUT_in', bel=path_in[0].bel, tile=path_in[0].tile)
             for LUT_in in not_LUT_ins:
-                self.G.add_edge(LUT_in.name, 't2', weight=0)
+                #self.G.add_edge(LUT_in.name, 't2', weight=0)
+                self.add_edges((LUT_in.name, 't2'), weight=0)
 
             for node in main_path:
-                self.G.add_edge('s2', node, weight=0)
+                #self.G.add_edge('s2', node, weight=0)
+                self.add_edges(('s2', node), weight=0)
 
             try:
                 not_path = path_finder(self.G, 's2', 't2', weight="weight", dummy_nodes=['s2', 't2'])
@@ -718,19 +826,18 @@ class Configuration():
 
     def fill_2(self, dev, queue, coord, TC_idx, c):
         int_tile = f'INT_{coord}'
+        out_nodes = {edge[1] for edge in queue}
+        '''invalid_out_nodes = set()
+        for node in out_nodes:
+            in_edges = set(dev.G.in_edges(node))
+            if not in_edges & set(queue):
+                invalid_out_nodes.add(node)
+
+        out_nodes = out_nodes - invalid_out_nodes'''
+        for node in out_nodes:
+            self.G.add_edge('out_node', node, weight=0)
+
         while not self.finish_TC(queue, free_cap=16):
-            out_nodes = {edge[1] for edge in queue}
-            invalid_out_nodes = set()
-            for node in out_nodes:
-                in_edges = set(dev.G.in_edges(node))
-                if not in_edges & set(queue):
-                    invalid_out_nodes.add(node)
-
-            out_nodes = out_nodes - invalid_out_nodes
-
-            for node in out_nodes:
-                self.G.add_edge('out_node', node, weight=0)
-
             self.create_CUT(coord, None)
             try:
                 path_out = path_finder(self.G, 'out_node', 't', weight='weight', dummy_nodes=['t', 'out_node'])
@@ -741,32 +848,45 @@ class Configuration():
                 queue.append(queue.pop(0))
                 continue
 
+            if re.match(GM.LUT_in_pattern, path_out[1].name):
+                if self.route_thrus:
+                    self.restore_route_thrus()
+            else:
+                if not self.route_thrus:
+                    self.remove_route_thrus()
+
             try:
-                self.G.remove_edge('out_node', path_out[0].name)
+                self.G.remove_edge('out_node', path_out[0].name)   #it is removed in block_nodes
                 self.unblock_nodes(dev, path_out[0].name)
                 path_in = path_finder(self.G, 's', path_out[0].name, weight='weight', dummy_nodes=['s'])
+                self.block_nodes = path_out[0].name
                 path_in = Path(dev, self, path_in[:-1], 'path_in')
                 self.add_path(dev, path_in)
                 pip = (path_in[-1].name, path_out[0].name)
                 self.CUTs[-1].pip = pip
             except:
+                self.block_nodes = path_out[0].name
                 self.remove_CUT(dev)
                 queue.append(queue.pop(0))
                 continue
 
-            main_path = self.CUTs[-1].main_path.str_nodes()
-            if len(main_path) > (GM.pips_length_dict[pip] + 10):
+            main_path = self.CUTs[-1].main_path
+            if len(main_path) > (GM.pips_length_dict[pip] + 10) or not (set(queue) & self.CUTs[-1].covered_pips):
+                self.inc_cost(dev, main_path, 3)
                 self.remove_CUT(dev)
-                self.G.remove_nodes_from(['s2', 't2'])
+                #self.G.add_edge('out_node', path_out[0].name, weight=0)
+                self.add_edges(('out_node', path_out[0].name), weight=0)
                 queue.append(queue.pop(0))
                 continue
 
             not_LUT_ins = dev.get_nodes(is_i6=False, clb_node_type='LUT_in', bel=path_in[0].bel, tile=path_in[0].tile)
             for LUT_in in not_LUT_ins:
-                self.G.add_edge(LUT_in.name, 't2', weight=0)
+                #self.G.add_edge(LUT_in.name, 't2', weight=0)
+                self.add_edges((LUT_in.name, 't2'), weight=0)
 
             for node in main_path:
-                self.G.add_edge('s2', node, weight=0)
+                self.G.add_edge('s2', node.name, weight=0)
+                #self.add_edges(('s2', node.name), weight=0)
 
             try:
                 not_path = path_finder(self.G, 's2', 't2', weight="weight", dummy_nodes=['s2', 't2'])
