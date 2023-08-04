@@ -63,6 +63,7 @@ fasm_path = os.path.join(Data_path, 'FASM')
 DLOC_path = os.path.join(Data_path, 'DLOC_dicts')
 
 ######## LUT Dual Mode
+print_message = True
 LUT_Dual = True
 block_mode = 'global'   #global|local
 route_thru = True
