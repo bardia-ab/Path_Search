@@ -7,7 +7,7 @@ class CUT:
         self.pip            = pip
         self.origin         = origin
         self.FFs_set        = set()
-        self.paths          = set()
+        self.paths          = []
         self.LUTs_func_dict = {}
 
     def get_paths(self):
@@ -25,6 +25,7 @@ class CUT:
         path_in = {path for path in self.paths if path.path_type == 'path_in'}.pop()
         path_out = {path for path in self.paths if path.path_type == 'path_out'}.pop()
         main_path = path_in + path_out
+        main_path.edges.add(self.pip)
         main_path.path_type = 'main_path'
 
         return main_path
@@ -40,7 +41,7 @@ class CUT:
     @property
     def covered_pips(self):
         tile = f'INT_{self.origin}'
-        covered_pips = {self.pip}
+        covered_pips = {self.pip.name}
         paths = {path for path in self.paths if path.path_type in {'path_in', 'path_out'}}
         for path in paths:
             covered_pips.update({pip.name for pip in path.pips if pip.u_tile == tile})
@@ -53,7 +54,7 @@ class CUT:
             self._G = nx.DiGraph()
 
         if self.pip:
-            self._G.add_edge(*self.pip)
+            self._G.add_edge(*self.pip.name)
 
         for path in self.paths:
             self._G.add_edges_from(path.edges)
