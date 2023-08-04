@@ -1,7 +1,9 @@
 import heapq
+
+import Global_Module
 from resources.tile import *
 from resources.primitive import *
-from Functions import extend_dict
+from Functions import extend_dict, weight_function
 class Arch:
     def __init__(self, G):
         self.G          = G
@@ -9,6 +11,7 @@ class Arch:
         self.wires_dict = {}
         self.init_tiles()
         self.reform_cost()
+        self.weight = weight_function(G, 'weight')
 
     def init_tiles(self):
         all_edges = {Edge(edge) for edge in self.G.edges()}
@@ -166,30 +169,22 @@ class Arch:
     def get_port(wire, delimiter='/'):
         return wire.split(delimiter)[1]
 
-    @staticmethod
-    def remove_FF_PIPs(G):
-        r1 = re.compile('CLE.*_[A-H]Q2*')
-        removable_edges = []
-        for edge in G.edges():
-            if re.match(r1, edge[1]) and Arch.get_tile(edge[0]) == Arch.get_tile(edge[1]):  # 2nd cond is for 's' & 't'
-                removable_edges.append(edge)
-
-        G.remove_edges_from(removable_edges)
-
-        return G
 
     def reform_cost(self):
         for edge in self.G.edges():
             if self.get_tile(edge[0]) == self.get_tile(edge[1]):
-                if self.get_tile(edge[0]).startswith('INT'):
-                    weight = 1  # INT_PIP
+                if self.get_tile(edge[0]).startswith('CLE'):
+                    if re.match(Global_Module.LUT_in6_pattern, edge[0]):
+                        weight = 50
+                    else:
+                        weight = 25  # CLB_Route_Thru
                 else:
-                    weight = 30  # CLB_Route_Thru
+                    continue
             else:
                 continue
-                '''if self.get_tile(edge[0]).startswith('INT') and self.get_tile(edge[1]).startswith('INT'):
-                    weight = 20  # INT_Tile -> INT_Tile
-                else:
-                    weight = 1  # INT_Tile <-> CLB_Tile'''
 
             self.G.get_edge_data(*edge)['weight'] = weight
+
+    def blocking_nodes(self, tile):
+        #these are out mode nodes that have pips back to the INT tile
+        return {node.name for node in self.get_nodes(tile=tile, mode='out') if self.G.out_degree(node.name)>1}
