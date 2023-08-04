@@ -1,8 +1,8 @@
 import networkx as nx
-import re, os, pickle, shutil, bz2
+import re, os, pickle, shutil, bz2, time
 import Global_Module as GM
 from itertools import count, product
-from heapq import heappop, heappush
+from heapq import heappop, heappush, heapify
 
 def extend_dict(dict_name, key, value, extend=False, value_type='list'):
     if value_type == 'set':
@@ -151,8 +151,21 @@ def get_graph(root, default_weight=0, xlim_down=None, xlim_up=None, ylim_down=No
             lines = data.readlines()
 
         lines = get_wires_list(lines)
-        #G = add_edges(G, *lines, G_copy=None, weight = default_weight)
         G.add_edges_from(lines, weight=default_weight)
+
+    G = generate_clb_graph(G)
+    G = remove_FF_PIPs(G)
+
+    return G
+
+def remove_FF_PIPs(G):
+    r1 = re.compile('CLE.*_[A-H]Q2*')
+    removable_edges = []
+    for edge in G.edges():
+        if re.match(r1, edge[1]) and get_tile(edge[0]) == get_tile(edge[1]):  # 2nd cond is for 's' & 't'
+            removable_edges.append(edge)
+
+    G.remove_edges_from(removable_edges)
 
     return G
 
@@ -165,6 +178,23 @@ def check_coord_range(FilePath, xlim_down=None, xlim_up=None, ylim_down=None, yl
         return True
     else:
         return False
+
+def generate_clb_graph(G):
+    CLBs = {get_tile(node) for node in G if node.startswith('CLE')}
+    for clb in CLBs:
+        if clb.startswith('CLEM'):
+            prefix = 'CLE_CLE_M_SITE_0_'
+        else:
+            prefix = 'CLE_CLE_L_SITE_0_'
+
+        for label in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']:
+            for i in range(1,7):
+                for suffix in ['MUX', '_O']:
+                    source = clb + '/' + prefix + label + str(i)
+                    sink = clb + '/' + prefix + label + suffix
+                    G.add_edge(source, sink, weight=0)
+
+    return G
 
 def get_wires_list(lines, delimiter='/'):
     wires_list = []
@@ -233,7 +263,93 @@ def get_pips_dict(nodes_dict, pips):
 
     return pips_dict
 
-def path_finder(G, source, target, weight="weight", conflict_free=True, delimiter='/', dummy_nodes=[]):
+def get_tile_ports(G, tile, categorization=None, wire_mode=None, pip_mode=None):
+    #categorization: 1-None 2-wire 3-pip
+    #wire modes: 1-in_port 2-out_port 3-mid_port
+    #pip mode: 1-downhill 2-uphill
+    pips = get_pips_graph(G, tile)
+    ports = {node for edge in pips for node in edge}
+
+    if categorization == 'wire':
+        if wire_mode == 'in_port':
+            in_ports = set()
+            for port in ports:
+                predecessors = set(G.predecessors(port))
+                pred_tiles = {get_tile(pred) for pred in predecessors}
+                if pred_tiles - {tile}:
+                    in_ports.add(port)
+
+            return in_ports
+
+        elif wire_mode == 'out_port':
+            out_ports = set()
+            for port in ports:
+                neighbors = set(G.neighbors(port))
+                neigh_tiles = {get_tile(neigh) for neigh in neighbors}
+                if neigh_tiles - {tile}:
+                    out_ports.add(port)
+
+            return out_ports
+
+        elif wire_mode == 'mid_port':
+            mid_ports = set()
+            for port in ports:
+                connected_nodes = set(G.predecessors(port))
+                connected_nodes.update(set(G.neighbors(port)))
+                connected_nodes_tiles = {get_tile(node) for node in connected_nodes}
+                if connected_nodes_tiles == {tile}:
+                    mid_ports.add(port)
+
+            return mid_ports
+
+        else:
+            raise ValueError ('Entered mid_port is not valid!!!')
+
+    elif categorization == 'pip':
+        if pip_mode == 'downhill':
+            downhill_ports = set()
+            for port in ports:
+                downhill_pips = {pip for pip in pips if port == pip[0]}
+                if not downhill_pips:
+                    downhill_ports.add(port)
+
+            return downhill_ports
+
+        elif pip_mode == 'uphill':
+            uphill_ports = set()
+            for port in ports:
+                uphill_pips = {pip for pip in pips if port == pip[1]}
+                if not uphill_pips:
+                    uphill_ports.add(port)
+
+            return uphill_ports
+
+        else:
+            raise ValueError ('Entered pip_port is not valid!!!')
+
+    return ports
+
+def get_pips_graph(G, tile=None):
+    edges = list(G.edges())
+    pips = []
+    for edge in edges:
+        if get_tile(edge[0]) == get_tile(edge[1]):
+            pips.append(edge)
+
+    if tile:
+        all_pips = pips.copy()
+        pips = []
+        for pip in all_pips:
+            if get_tile(pip[0]) == tile:
+                pips.append(pip)
+
+    return pips
+
+
+def path_finder(G, source, target, weight="weight", conflict_free=True, delimiter='/', dummy_nodes=[], blocked_nodes=set()):
+    if {source, target} & blocked_nodes:
+        raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
+
     if source not in G or target not in G:
         msg = f"Either source {source} or target {target} is not in G"
         raise nx.NodeNotFound(msg)
@@ -241,7 +357,7 @@ def path_finder(G, source, target, weight="weight", conflict_free=True, delimite
     if source == target:
         return [source]
 
-    weight = _weight_function(G, weight)
+    weight = weight_function(G, weight)
     push = heappush
     pop = heappop
     # Init:  [Forward, Backward]
@@ -285,7 +401,11 @@ def path_finder(G, source, target, weight="weight", conflict_free=True, delimite
 
         for w, d in neighs[dir][v].items():
             # weight(v, w, d) for forward and weight(w, v, d) for back direction
-            cost = weight(v, w, d) if dir == 0 else weight(w, v, d)
+            if w in blocked_nodes:
+                cost = None
+            else:
+                cost = weight(v, w, d) if dir == 0 else weight(w, v, d)
+
             if cost is None:
                 continue
             vwLength = dists[dir][v] + cost
@@ -316,7 +436,7 @@ def path_finder(G, source, target, weight="weight", conflict_free=True, delimite
 
     raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
 
-def _weight_function(G, weight):
+def weight_function(G, weight):
     """Returns a function that returns the weight of an edge.
 
     The returned function is specifically suitable for input to
