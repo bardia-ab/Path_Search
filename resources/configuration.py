@@ -290,7 +290,8 @@ class Configuration():
 
         self.update_FFs('free', FFs_set)
         self.reset_LUTs(device, LUTs_func_dict)
-
+        if not self.CUTs and self.block_nodes:
+            breakpoint()
 
         self.CUTs.remove(cut)
 
@@ -1177,6 +1178,7 @@ class Configuration():
             return  None
 
         pip = tuple(path_in1[-2:])
+        neigh_pip_v = list(self.G.neighbors(pip[1]))[0]
         self.G.remove_edge('out_node', pip[1])
 
         if len(path_out1) < len(path_in1):
@@ -1185,21 +1187,33 @@ class Configuration():
                 return  None
 
             self.decide_long_pips(device, pip)
-            path_in = self.get_path(device, 's', pip[0], 'weight', self.block_nodes, 'path_in')
+            if re.match(GM.LUT_in6_pattern, neigh_pip_v):
+                src = {node.name for node in device.get_nodes(clb_node_type='FF_out', bel_group=Node(neigh_pip_v).bel_group, bel=neigh_pip_v[-2])}
+                block_nodes = self.block_nodes.union(src)
+            else:
+                block_nodes = self.block_nodes
+
+            path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes, 'path_in')
             if not path_in:
                 unblock_nodes = set(path_in1[:-1]) & self.func(device, path_out.str_nodes())
                 if not unblock_nodes & set(path_out.str_nodes()):
                     coord = get_tile(pip[0]).split('_X')[-1]
                     self.create_CUT(coord, None)
                     self.add_path(device, path_out)
-                    path_in = self.get_path(device, 's', pip[0], 'weight', self.block_nodes - unblock_nodes, 'path_in')
+                    path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes - unblock_nodes, 'path_in')
                     if not path_in:
                         self.remove_CUT(device)
                         return  None
                 else:
                     return  None
         else:
-            path_in = self.get_path(device, 's', pip[0], 'weight', self.block_nodes, 'path_in')
+            if re.match(GM.LUT_in6_pattern, neigh_pip_v):
+                src = {node.name for node in device.get_nodes(clb_node_type='FF_out', bel_group=Node(neigh_pip_v).bel_group, bel=neigh_pip_v[-2])}
+                block_nodes = self.block_nodes.union(src)
+            else:
+                block_nodes = self.block_nodes
+
+            path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes, 'path_in')
             if not path_in:
                 return  None
 

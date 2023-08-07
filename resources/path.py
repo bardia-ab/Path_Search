@@ -103,14 +103,6 @@ class Path:
             LUT_func = self.get_LUT_func(LUT_in_type)
             dct[node] = LUT_func
 
-            '''if GM.block_mode == 'local':
-                LUT_func = self.get_LUT_func(LUT_in_type)
-                dct[node] = LUT_func
-            else:
-                for gnode in device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix):
-                    LUT_func    = self.get_LUT_func(LUT_in_type)
-                    dct[gnode] = LUT_func'''
-
         return dct
 
     def verify_path(self, device, TC):
@@ -118,6 +110,8 @@ class Path:
         usage_dct = {}
         if GM.block_mode == 'global':
            LUTs_func_dict = TC.get_global_LUTs(device, self.LUTs_dict())
+        else:
+            LUTs_func_dict = self.LUTs_dict()
 
         for LUT_in in LUTs_func_dict:
             required_subLUTs = 2 if (LUT_in.is_i6 or not GM.LUT_Dual) else 1

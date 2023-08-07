@@ -157,16 +157,37 @@ class LUT6_2:
     def __init__(self, name, *primitives):
         self.name   = name
         self.LUTs   = primitives
-        self.init = self.cal_int()
+        self.init = self.cal_int2()
 
     def __repr__(self):
         return self.name
+
+    def set_LUT(self, LUT_in, function):
+        subLUT = [lut for lut in self.LUTs if lut.usage == 'free']
+        subLUT.sort(key=lambda x: x.name, reverse=True)
+        N = 2 if LUT_in.is_i6 else 1
+        for i in range(N):
+            subLUT[i].inputs   = LUT_in
+            subLUT[i].function = function
+            subLUT[i].usage    = 'used'
 
     def cal_int(self):
         LUT6 = [prim for prim in self.LUTs if prim.LUT_type=='6LUT'].pop()
         LUT5 = [prim for prim in self.LUTs if prim.LUT_type == '5LUT']
 
         if LUT5 and not Node(LUT5[0].inputs[0]).is_i6: # when LUT_in.is_i6 => 5LUT is used but init isn't calculated
+            LUT5 = LUT5.pop()
+            init = "64'h" + LUT6.init[:8] + LUT5.init[-8:]
+        else:
+            init = "64'h" + LUT6.init
+
+        return init
+
+    def cal_int2(self):
+        LUT6 = [prim for prim in self.LUTs if prim.LUT_type=='6LUT'].pop()
+        LUT5 = [prim for prim in self.LUTs if prim.LUT_type == '5LUT'].pop()
+
+        if LUT5.usage == 'used' and not LUT5.inputs.is_i6: # when LUT_in.is_i6 => 5LUT is used but init isn't calculated
             LUT5 = LUT5.pop()
             init = "64'h" + LUT6.init[:8] + LUT5.init[-8:]
         else:

@@ -77,7 +77,7 @@ consts.update(const.get_pip_FASM(*path2.pips, mode='set'))
 clk_nodes = {node for node in clk_pips}
 TC.G.add_edges_from(clk_pips, weight=1)
 TC.unblock_nodes(dev, clk_nodes)
-consts.update(const.get_CLB_FASM(dev, TC, path1 + path2, clk))
+consts.update(const.get_CLB_FASM2(dev, TC, path1 + path2, clk))
 #consts.update(const.get_pip_FASM(*path3.pips, mode='set'))
 
 store_path = r'C:\Users\t26607bb\Desktop\CPS_Project\Vivado_Projects\pyteman_test\FASM\LED_other_clock_group_LUT'

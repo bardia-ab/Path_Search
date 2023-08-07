@@ -1,5 +1,6 @@
 from Functions import load_data
 from relocation.tile import Tile
+from resources.primitive import LUT, LUT6_2
 import Global_Module as GM
 import re
 class Arch:
@@ -10,6 +11,7 @@ class Arch:
         self.tiles_map  = self.get_tiles_coord_dict()
         self.INTs       = self.get_INTs()
         self.CLBs       = self.get_CLBs()
+        #self.LUTs       = self.gen_LUTs()
 
     def get_INTs(self):
         INTs = set(filter(lambda x: x.startswith('INT'), self.wires_dict))
@@ -32,13 +34,25 @@ class Arch:
 
         return tiles
 
-    def sort_INTs(self, tile):
+    def gen_LUTs(self):
+        LUTs = set()
+        for clb in self.CLBs:
+            for i in range(65, 73):
+                subLUT1 = LUT(f'{clb.name}/{chr(i)}5LUT')
+                subLUT2 = LUT(f'{clb.name}/{chr(i)}6LUT')
+                LUTs.add(LUT6_2(f'{clb.name}/{chr(i)}LUT', subLUT1, subLUT2))
+
+        return LUTs
+
+    def sort_INTs(self, INTs, tile):
         x_coord = self.get_x_coord(tile)
         origin_tile = self.get_tiles(name=tile).pop()
-        self.INTs.sort(key=lambda x: self.get_x_coord(x.name))
-        self.INTs = sorted(self.INTs, key= lambda x: abs(x_coord - self.get_x_coord(x.name)))
-        self.INTs.remove(origin_tile)
-        self.INTs.insert(0, origin_tile)
+        INTs.sort(key=lambda x: self.get_x_coord(x.name))
+        INTs = sorted(INTs, key= lambda x: abs(x_coord - self.get_x_coord(x.name)))
+        INTs.remove(origin_tile)
+        INTs.insert(0, origin_tile)
+
+        return INTs
 
     def get_tiles_coord_dict(self):
         tiles_coord_dict = {}
@@ -60,14 +74,38 @@ class Arch:
 
     def limit(self, x_min, x_max, y_min, y_max):
         limited_tiles = []
-        for tile in self.INTs + self.CLBs:
+        for tile in self.INTs:
             [x, y] = re.findall('\d+', tile.name)
             x = int(x)
             y = int(y)
             if (x_min <= x <= x_max) and (y_min <= y <= y_max):
                 limited_tiles.append(tile)
 
-        self.INTs = limited_tiles.copy()
+        limited_INTs = []
+        limited_CLBs = []
+        x_min = x_min - 16
+        y_min = y_min - 16
+        x_max = x_max + 16
+        y_max = y_max + 16
+
+        for tile in self.INTs:
+            [x, y] = re.findall('\d+', tile.name)
+            x = int(x)
+            y = int(y)
+            if (x_min <= x <= x_max) and (y_min <= y <= y_max):
+                limited_INTs.append(tile)
+
+        for tile in self.CLBs:
+            [x, y] = re.findall('\d+', tile.name)
+            x = int(x)
+            y = int(y)
+            if (x_min <= x <= x_max) and (y_min <= y <= y_max):
+                limited_CLBs.append(tile)
+
+        self.INTs = limited_INTs.copy()
+        self.CLBs = limited_CLBs.copy()
+
+        return limited_tiles
 
     @staticmethod
     def get_x_coord(tile):

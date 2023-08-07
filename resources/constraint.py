@@ -5,8 +5,8 @@ from resources.path import Path
 from resources.cut import CUT
 from resources.primitive import *
 
-def get_pip_FASM(*pips, mode='set'):
-    value = {'set': 1, 'clear': 0}
+def get_pip_FASM(*pips, mode=None):
+    value = {'set': 1, 'clear': 0, None:'{}'}
     exception = [
         ('INT_NODE_IMUX_18_INT_OUT0', 'BYPASS_E14'),
         ('INT_NODE_IMUX_37_INT_OUT0', 'BYPASS_W8'),
@@ -26,7 +26,7 @@ def get_pip_FASM(*pips, mode='set'):
 
     return FASM_list
 
-def get_CLB_FASM(device, TC, path: Path, clk):
+def get_CLB_FASM2(device, TC, path: Path, clk):
     configurations = set()
     FF_pins_dct = {
         'C'     :   {'B': 'CTRL_{}4', 'T': 'CTRL_{}5'},
