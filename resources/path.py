@@ -12,9 +12,9 @@ class Path:
             self.nodes      = self.add_nodes(device, nodes)
             self.edges      = self.add_edges(device, nodes)
 
-        if TC:
-            self.prev_CD    = TC.CD
-            if not self.verify_path(TC):
+        if TC and device:
+            self.prev_CD    = TC.CD.copy()
+            if not self.verify_path(device, TC):
                 raise ValueError
 
     def __repr__(self):
@@ -113,10 +113,13 @@ class Path:
 
         return dct
 
-    def verify_path(self, TC):
+    def verify_path(self, device, TC):
         result = True
         usage_dct = {}
-        for LUT_in in self.LUTs_dict():
+        if GM.block_mode == 'global':
+           LUTs_func_dict = TC.get_global_LUTs(device, self.LUTs_dict())
+
+        for LUT_in in LUTs_func_dict:
             required_subLUTs = 2 if (LUT_in.is_i6 or not GM.LUT_Dual) else 1
             key = (LUT_in.tile, LUT_in.bel)
             if key not in usage_dct:
