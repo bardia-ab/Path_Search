@@ -40,12 +40,12 @@ for config in zip(main_paths[:3], not_paths[:3]):
         main_path = Path(dev, config[0][idx], 'main-path', )
         LUTs_func_dict = main_path.LUTs_dict()
         TC.set_LUTs(dev, 'used', LUTs_func_dict)
-        cut.paths.add(main_path)
+        cut.paths.append(main_path)
 
         not_path = Path(dev, config[1][idx], 'not', )
         LUTs_func_dict = not_path.LUTs_dict()
         TC.set_LUTs(dev, 'used', LUTs_func_dict)
-        cut.paths.add(not_path)
+        cut.paths.append(not_path)
 
     used_LUTs.append(LUT.integrate(*TC.get_LUTs(usage='used')))
     TCs.append(TC)
