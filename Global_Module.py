@@ -53,17 +53,18 @@ def init_paths():
     return root, Data_path
 
 ############################################################
-root, Data_path = init_paths()
-store_path = os.path.join(Data_path, 'Store2')
-load_path = os.path.join(Data_path, 'Load')
-graph_path = os.path.join(Data_path, 'Compressed Graphs')
-excluded_path = os.path.join(Data_path, 'No-Path Ports')
-const_path = os.path.join(Data_path, 'Constraints')
-fasm_path = os.path.join(Data_path, 'FASM')
-DLOC_path = os.path.join(Data_path, 'DLOC_dicts')
+root, Data_path     = init_paths()
+store_path          = os.path.join(Data_path, 'Store2')
+load_path           = os.path.join(Data_path, 'Load')
+graph_path          = os.path.join(Data_path, 'Compressed Graphs')
+excluded_path       = os.path.join(Data_path, 'No-Path Ports')
+const_path          = os.path.join(Data_path, 'Constraints')
+fasm_path           = os.path.join(Data_path, 'FASM')
+DLOC_path           = os.path.join(Data_path, 'DLOC_dicts')
+Uncovered_PIPs_path = os.path.join(Data_path, 'Uncovered_PIPs')
 
 ######## LUT Dual Mode
-print_message = False
+print_message = True
 LUT_Dual = True
 block_mode = 'global'   #global|local
 route_thru = True
