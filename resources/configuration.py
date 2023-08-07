@@ -83,7 +83,8 @@ class Configuration():
             try:
                 self._block_nodes.remove(node)
             except:
-                breakpoint()
+                pass
+                #breakpoint()
 
             in_edges = set(device.G.in_edges(node))
             self._block_edges = self._block_edges - in_edges
@@ -290,6 +291,7 @@ class Configuration():
         self.update_FFs('free', FFs_set)
         self.reset_LUTs(device, LUTs_func_dict)
 
+
         self.CUTs.remove(cut)
 
     def finalize_CUT(self, device, int_tile):
@@ -388,6 +390,7 @@ class Configuration():
                 used_LUT_in = {inp for prim in LUT_primitives if prim.inputs for inp in prim.inputs}
                 free_LUT_in = device.get_nodes(is_i6=False, bel=node.bel, tile=node.tile, primitive=node.primitive) - used_LUT_in
                 free_LUT_in = free_LUT_in - freed_LUT_ins
+                free_LUT_in = {node.name for node in free_LUT_in} - self.block_nodes
                 self.unblock_nodes(device, free_LUT_in)
 
     def get_subLUT(self, usage, node, next_iter_initalization=False):
@@ -989,6 +992,97 @@ class Configuration():
 
         return queue
 
+    def fill_3(self, dev, queue, coord, TC_idx, c):
+        int_tile = f'INT_{coord}'
+        out_nodes = {edge[1] for edge in queue}
+        '''invalid_out_nodes = set()
+        for node in out_nodes:
+            in_edges = set(dev.G.in_edges(node))
+            if not in_edges & set(queue):
+                invalid_out_nodes.add(node)
+
+        out_nodes = out_nodes - invalid_out_nodes'''
+        for node in out_nodes:
+            self.G.add_edge('out_node', node, weight=0)
+
+        while not self.finish_TC(queue, free_cap=16):
+            out_nodes = {edge[1] for edge in queue}
+            excess_out_nodes = set(self.G.neighbors('out_node')) - out_nodes
+            excess_out_node_edges = set(product({'out_node'}, excess_out_nodes))
+            self.G.remove_edges_from(excess_out_node_edges)
+            self.create_CUT(coord, None)
+            #main_path, pip = self.negotiate(dev, queue)
+            pip = self.get_main_ath(dev, queue)
+            '''if main_path:
+                main_path = Path(dev, self, main_path, 'main_path')
+                self.add_path(dev, main_path)
+            else:
+                self.remove_CUT(dev)
+                continue'''
+            if not pip:
+                continue
+
+            self.CUTs[-1].pip = dev.get_edges(u=pip[0], v=pip[1]).pop()
+            main_path = self.CUTs[-1].main_path
+            if len(main_path) > (GM.pips_length_dict[pip] + 10):
+                self.remove_CUT(dev)
+                for edge in main_path.edges:
+                    self.G.get_edge_data(*edge)['weight'] += 1 / len(main_path)
+                self.add_edges(('out_node', pip[1]), weight=1)
+                print(f'long path => {pip} : {len(main_path) - GM.pips_length_dict[pip]}')
+                continue
+
+            if not (set(queue) & self.CUTs[-1].covered_pips):
+                self.remove_CUT(dev)
+                self.G.get_edge_data(*pip)['weight'] += 30
+                self.add_edges(('out_node', pip[1]), weight=0)
+                print('No new pip', pip)
+                continue
+
+            not_LUT_ins = dev.get_nodes(is_i6=False, clb_node_type='LUT_in', bel=main_path[0].bel, tile=main_path[0].tile)
+            for LUT_in in not_LUT_ins:
+                #self.G.add_edge(LUT_in.name, 't2', weight=0)
+                self.add_edges((LUT_in.name, 't2'), weight=0)
+
+            for node in main_path:
+                self.G.add_edge('s2', node.name, weight=0)
+                #self.add_edges(('s2', node.name), weight=0)
+
+            block_nodes = dev.blocking_nodes(f'INT_{main_path[0].coordinate}').union(self.block_nodes)
+            block_nodes = block_nodes - set(main_path.str_nodes())
+            not_path = self.get_path(dev, 's2', 't2', dev.weight, block_nodes, 'not')
+            if not not_path:
+                self.G.remove_nodes_from(['s2', 't2'])
+                continue
+
+            '''try:
+                blocked_nodes = dev.blocking_nodes(f'INT_{path_in[0].coordinate}').union(self.block_nodes)
+                blocked_nodes = blocked_nodes - set(main_path.str_nodes())
+                not_path = path_finder(self.G, 's2', 't2', weight=dev.weight, dummy_nodes=['s2', 't2'], blocked_nodes=blocked_nodes)
+                not_path = Path(dev, self, not_path, 'not')
+                self.add_path(dev, not_path)
+            except:
+                self.remove_CUT(dev)
+                self.G.remove_nodes_from(['s2', 't2'])
+                print('No not-path')
+                continue'''
+
+            #self.inc_cost(dev, not_path, 1)
+            self.G.remove_nodes_from(['s2', 't2'])
+            self.finalize_CUT(dev, int_tile)
+            l1 = len(queue)
+            queue = [pip for pip in queue if pip not in self.CUTs[-1].covered_pips]
+            l2 = len(queue)
+            if l1 == l2:
+                c += 1
+
+            print(f'TC{TC_idx}- Found Paths: {len(self.CUTs)}')
+            print(f'Remaining PIPs: {len(queue)}')
+
+        self.G.remove_node('out_node')
+
+        return queue
+
     def get_path_cost(self, path):
         weights = {self.G.get_edge_data(*edge)['weight'] for edge in zip(path, path[1:])}
 
@@ -1026,3 +1120,103 @@ class Configuration():
             self.add_path(dev, path)
 
         return path
+
+    def negotiate(self, device, queue):
+        G = self.G.copy()
+        c = 0
+        while 1:
+            if c>50:
+                return None, None
+
+            c +=1
+            p1 = path_finder(G, 'out_node', 't', weight='weight', dummy_nodes=['s', 't', 'out_node', 's2', 't2'],
+                             blocked_nodes=self.block_nodes, conflict_free=True)
+
+            node = p1[1]
+            visited_preds = {pip[0] for pip in self.G.in_edges(p1[0]) if pip not in queue}
+            block_nodes = self.func(device, p1).union(visited_preds) - {node}
+
+            #self.decide_long_pips(dev, pip)
+            try:
+                p2 = path_finder(G, 's', node, weight='weight', dummy_nodes=['s', 't', 'out_node', 's2', 't2'],
+                             blocked_nodes=self.block_nodes.union(block_nodes), conflict_free=True)
+                path = p2[1:] + p1[:-1]
+                print('**path_found')
+                break
+            except:
+                print('**conflict')
+                for edge in zip(p1, p1[1:]):
+                    G.get_edge_data(*edge)['weight'] += 1 / len(p1)
+
+        self.G.remove_edge('out_node', node)
+        return path, (p2[-2], p1[1])
+
+    def func(self, device, path):
+        global_nodes = set()
+        for node in path:
+            if node.startswith('INT'):
+                global_nodes.update(device.get_nodes(port=Node(node).port))
+            else:
+                global_nodes.update(device.get_nodes(bel_group=Node(node).bel_group, port_suffix=Node(node).port_suffix))
+
+        return {node.name for node in global_nodes}
+
+    def get_main_ath(self, device, queue):
+        try:
+            path_out1 = path_finder(self.G, 'out_node', 't', weight='weight', dummy_nodes=['s', 't', 'out_node', 's2', 't2'],
+                        blocked_nodes=self.block_nodes, conflict_free=False)[1:-1]
+        except:
+            return  None
+
+        visited_preds = {pip[0] for pip in self.G.in_edges(path_out1[0]) if pip not in queue}
+        try:
+            path_in1 = path_finder(self.G, 's', path_out1[0], weight='weight', dummy_nodes=['s', 't', 'out_node', 's2', 't2'],
+                               blocked_nodes=self.block_nodes.union(visited_preds), conflict_free=False)[1:]
+        except:
+            self.G.remove_edge('out_node', path_out1[0])
+            return  None
+
+        pip = tuple(path_in1[-2:])
+        self.G.remove_edge('out_node', pip[1])
+
+        if len(path_out1) < len(path_in1):
+            path_out = self.get_path(device, pip[1], 't', 'weight', self.block_nodes, 'path_out')
+            if not path_out:
+                return  None
+
+            self.decide_long_pips(device, pip)
+            path_in = self.get_path(device, 's', pip[0], 'weight', self.block_nodes, 'path_in')
+            if not path_in:
+                unblock_nodes = set(path_in1[:-1]) & self.func(device, path_out.str_nodes())
+                if not unblock_nodes & set(path_out.str_nodes()):
+                    coord = get_tile(pip[0]).split('_X')[-1]
+                    self.create_CUT(coord, None)
+                    self.add_path(device, path_out)
+                    path_in = self.get_path(device, 's', pip[0], 'weight', self.block_nodes - unblock_nodes, 'path_in')
+                    if not path_in:
+                        self.remove_CUT(device)
+                        return  None
+                else:
+                    return  None
+        else:
+            path_in = self.get_path(device, 's', pip[0], 'weight', self.block_nodes, 'path_in')
+            if not path_in:
+                return  None
+
+            self.decide_long_pips(device, pip)
+            path_out = self.get_path(device, pip[1], 't', 'weight', self.block_nodes, 'path_out')
+            if not path_out:
+                unblock_nodes = set(path_out1) & self.func(device, path_in.str_nodes())
+                if not unblock_nodes & set(path_in.str_nodes()):
+                    coord = get_tile(pip[0]).split('_X')[-1]
+                    self.create_CUT(coord, None)
+                    self.add_path(device, path_in)
+                    path_out = self.get_path(device, pip[1], 't', 'weight', self.block_nodes - unblock_nodes, 'path_out')
+                    if not path_out:
+                        self.remove_CUT(device)
+                        return  None
+                else:
+                    return  None
+
+
+        return pip
