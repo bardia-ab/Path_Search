@@ -27,6 +27,26 @@ class Configuration():
         self.long_TC_process_time   = 120
         self.assign_source_sink()
 
+    @staticmethod
+    def get_direction(clb_node):
+        if clb_node.startswith('CLEL_R'):
+            dir = 'E'
+        else:
+            dir = 'W'
+
+        return dir
+
+    @staticmethod
+    def get_slice_type(tile):
+        if tile.startswith('CLEM'):
+            return 'M'
+        else:
+            return 'L'
+
+    @staticmethod
+    def port_suffix(node):
+        return node.split('_SITE_0_')[-1]
+
     @property
     def block_edges(self):
         return self._block_edges
@@ -301,11 +321,18 @@ class Configuration():
         if not nx.is_forest(self.G_TC):
             breakpoint()
 
-        self.update_FFs('blocked', cut.FFs_set)
-        self.set_LUTs(device, 'blocked', cut.LUTs_func_dict)
+        if GM.block_mode == 'global':
+           FFs_set = self.get_global_FFs(device, cut.FFs_set)
+           LUTs_func_dict = self.get_global_LUTs(device, cut.LUTs_func_dict)
+        else:
+            FFs_set = cut.FFs_set.copy()
+            LUTs_func_dict = cut.LUTs_func_dict.copy()
+
+        self.update_FFs('blocked', FFs_set)
+        self.set_LUTs(device, 'blocked', LUTs_func_dict)
         #increase cost
         main_path = self.CUTs[-1].main_path
-        self.inc_cost(device, main_path, int_tile, 1/len(main_path))
+        self.inc_cost(device, main_path, int_tile, 1/len(main_path), global_mode=True)
         self.remove_LUT_occupied_sources(device)
         out_node_neighs = {node.name for node in cut.nodes if 'out_node' in self.G.predecessors(node.name)}
         edges = set(product({'out_node'}, out_node_neighs))
@@ -462,8 +489,44 @@ class Configuration():
 
         return global_LUTs_func_dict
 
-    def inc_cost(self, device, path, tile, weight):
+    def get_global_node_pattern(self, node):
+        if node.startswith('INT'):
+            pattern = f'^INT.*/{get_port(node)}$'
+        else:
+            direction = self.get_direction(node)
+
+            pattern = f'^CLE.*/CLE_CLE_[LM]_SITE_0_{self.port_suffix(node)}$'
+
+        return pattern
+
+    def get_global_nodes(self, node):
+        pattern = self.get_global_node_pattern(node)
+        nodes = set(filter(lambda x: re.match(pattern, x), self.G))
+        if node.startswith('CLE'):
+            direction = self.get_direction(node)
+            if direction == 'E':
+                nodes = {node for node in nodes if node.startswith('CLEL_R')}
+            else:
+                nodes = {node for node in nodes if not node.startswith('CLEL_R')}
+
+        return nodes
+
+    def get_global_edges(self, edge):
+        p1 = self.get_global_node_pattern(edge[0])
+        p2 = self.get_global_node_pattern(edge[1])
+
+        return set(filter(lambda x: re.match(p1, x[0]) and re.match(p2, x[1]), self.G.edges()))
+
+
+    def inc_cost(self, device, path, tile, weight, global_mode=False):
+        edges = set()
         for edge in path.edges:
+            if global_mode:
+                edges.update({Edge(e) for e in self.get_global_edges(edge)})
+            else:
+                edges.add(edge)
+
+        for edge in edges:
             if edge.type == 'pip' and edge.u_tile==tile:
                 device.G.get_edge_data(*edge)['weight'] += weight
             else:
@@ -694,7 +757,7 @@ class Configuration():
         launch_groups = {group for group in self.CD if self.CD[group] == 'launch'}
         occupied_LUTs = set()
         for group in launch_groups:
-            occupied_LUTs.update((LUT_primitive.tile, LUT_primitive.letter) for LUT_primitive in self.get_LUTs(usage='used', bel_group=group))
+            occupied_LUTs.update((LUT_primitive.tile, LUT_primitive.letter) for LUT_primitive in self.get_LUTs(usage='blocked', bel_group=group) if self.is_LUT_full(LUT_primitive))
 
         FF_outs = set()
         for lut in occupied_LUTs:
@@ -1013,7 +1076,7 @@ class Configuration():
             self.G.remove_edges_from(excess_out_node_edges)
             self.create_CUT(coord, None)
             #main_path, pip = self.negotiate(dev, queue)
-            pip = self.get_main_ath(dev, queue)
+            pip = self.get_main_path(dev, queue)
             '''if main_path:
                 main_path = Path(dev, self, main_path, 'main_path')
                 self.add_path(dev, main_path)
@@ -1162,11 +1225,12 @@ class Configuration():
 
         return {node.name for node in global_nodes}
 
-    def get_main_ath(self, device, queue):
+    def get_main_path(self, device, queue):
         try:
             path_out1 = path_finder(self.G, 'out_node', 't', weight='weight', dummy_nodes=['s', 't', 'out_node', 's2', 't2'],
                         blocked_nodes=self.block_nodes, conflict_free=False)[1:-1]
         except:
+            self.remove_CUT(device)
             return  None
 
         visited_preds = {pip[0] for pip in self.G.in_edges(path_out1[0]) if pip not in queue}
@@ -1175,6 +1239,7 @@ class Configuration():
                                blocked_nodes=self.block_nodes.union(visited_preds), conflict_free=False)[1:]
         except:
             self.G.remove_edge('out_node', path_out1[0])
+            self.remove_CUT(device)
             return  None
 
         pip = tuple(path_in1[-2:])
@@ -1202,7 +1267,6 @@ class Configuration():
                     self.add_path(device, path_out)
                     path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes - unblock_nodes, 'path_in')
                     if not path_in:
-                        self.remove_CUT(device)
                         return  None
                 else:
                     return  None
@@ -1227,7 +1291,6 @@ class Configuration():
                     self.add_path(device, path_in)
                     path_out = self.get_path(device, pip[1], 't', 'weight', self.block_nodes - unblock_nodes, 'path_out')
                     if not path_out:
-                        self.remove_CUT(device)
                         return  None
                 else:
                     return  None
