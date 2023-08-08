@@ -5,6 +5,20 @@ from resources.path import Path
 from resources.cut import CUT
 from resources.primitive import *
 
+def get_tile (wire, delimiter='/'):
+    return wire.split(delimiter)[0]
+
+def get_port (wire, delimiter='/'):
+    return wire.split(delimiter)[1]
+
+def get_direction(clb_node):
+    if clb_node.startswith('CLEL_R'):
+        dir = 'E'
+    else:
+        dir = 'W'
+
+    return dir
+
 def get_pip_FASM(*pips, mode=None):
     value = {'set': 1, 'clear': 0, None:'{}'}
     exception = [
@@ -99,3 +113,70 @@ def get_CLB_FASM2(device, TC, path: Path, clk):
         configurations.add(f'{clb_mux.tile}.{OUTMUX}.{OUTMUX_pin} = 1\n')
 
     return configurations
+
+def get_LUTs_FASM(LUTs_dict):
+    i6_dct = {
+        'A': 'IMUX_{}18',
+        'B': 'IMUX_{}19',
+        'C': 'IMUX_{}20',
+        'D': 'IMUX_{}21',
+        'E': 'IMUX_{}34',
+        'F': 'IMUX_{}35',
+        'G': 'IMUX_{}46',
+        'H': 'IMUX_{}47'
+    }
+
+    configurations = []
+    for LUT in LUTs_dict:
+        tile = get_tile(LUT)
+        bel = get_port(LUT)[0]
+
+        if len(LUTs_dict[LUT]) == 1:    #6LUT
+            input_idx = int(LUTs_dict[LUT][0][-1])
+            function = LUTs_dict[LUT][1]
+            INIT = f"64'h{cal_init(input_idx, function, 6)}"
+            if LUTs_dict[LUT][2] == 'MUX':
+                configurations.append(get_OUTMUx_FASM(tile, bel, 6))
+        else:                           #5LUT & 6LUT
+            subLUTs = sorted(LUTs_dict[LUT], key=lambda x: 0 if x[2]=='O' else 1)
+            INIT = []
+            for s_idx, subLUT in enumerate(subLUTs):
+                input_idx = int(subLUT[0][-1])
+                function = LUTs_dict[LUT][1]
+                if input_idx == 6:
+                    INIT = f"64'h{cal_init(input_idx, function, 6)}"
+                    break
+                else:
+                    INIT.append(cal_init(input_idx, function, 5))
+                    if subLUT[2] == 'MUX':
+                        subLUT_idx = 6 - s_idx
+                        configurations.append(get_OUTMUx_FASM(tile, bel, subLUT_idx))
+            else:
+                INIT = f"64'h{INIT[0]}{INIT[1]}"
+
+        INIT_conf = f'{tile}.{bel}LUT.INIT[63:0] = {INIT}'
+        i6_port = i6_dct[bel].format(get_direction(LUT))
+        configurations.append(f'{tile}.PIP.{i6_port}.VCC_WIRE = {{}}\n')
+        configurations.append(INIT_conf)
+
+def get_truth_table(n_entry):
+    truth_table = list(product((0, 1), repeat=n_entry))
+    return [entry[::-1] for entry in truth_table]
+
+def cal_init(input_idx, function, N_inputs):
+    entries = get_truth_table(N_inputs)
+    if function == 'not':
+        init_list = [str(int(not(entry[input_idx]))) for entry in entries]
+    elif function == 'buffer':
+        init_list = [str(entry[input_idx]) for entry in entries]
+    else:
+        init_list = [str(0) for _ in entries]
+
+    init_list.reverse()
+    init_binary = ''.join(init_list)
+    init = format(int(init_binary, base=2), f'016X')
+
+    return init
+
+def get_OUTMUx_FASM(tile, bel, subLUT_idx):
+    return f'{tile}OUTMUX{bel}.D{subLUT_idx} = {{}}\n'
