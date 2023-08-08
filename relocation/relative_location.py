@@ -3,6 +3,7 @@ from relocation.tile import Tile
 import networkx as nx
 import re, copy
 from Functions import extend_dict
+import Global_Module as GM
 class RLOC:
     def __init__(self, cut: CUT, idx):
         self.LUTs_func_dict = {}
@@ -122,8 +123,13 @@ class RLOC:
         return DLOC_coord
 
     @staticmethod
-    def get_direction(node):
-        return RLOC.get_tile(node).split('_')[1]
+    def get_direction(clb_node):
+        if clb_node.startswith('CLEL_R'):
+            dir = 'E'
+        else:
+            dir = 'W'
+
+        return dir
 
     @staticmethod
     def get_slice_type(tile):
@@ -157,8 +163,8 @@ class RLOC:
 class DLOC():
 
     def __init__(self, device, TC, R_CUT, origin):
-        self.LUTs_func_dict = {}
-        self.FFs_set        = set()
+        #self.LUTs_func_dict = {}
+        #self.FFs_set        = set()
         self.origin         = origin
         self.index          = R_CUT.index
         self.G              = self.get_DLOC_G(device, TC, R_CUT)
@@ -202,15 +208,22 @@ class DLOC():
             function = R_CUT.LUTs_func_dict[LUT_in]
             D_LUT_in = copy.deepcopy(LUT_in)
             D_LUT_in.name = nodes_dict[LUT_in.name]
-            self.LUTs_func_dict[D_LUT_in] = function
-            extend_dict(TC.LUTs, D_LUT_in.bel_key, D_LUT_in.name)
+            if function == 'buffer':
+                neigh = list(G.neighbors(D_LUT_in.name))[0]
+                neigh_type = 'O' if re.match(GM.CLB_out_pattern, neigh) else 'MUX'
+            else:
+                neigh_type = None
+
+            #self.LUTs_func_dict[D_LUT_in] = function
+            extend_dict(TC.LUTs, D_LUT_in.bel_key, (D_LUT_in.name, function, neigh_type))
             #LUT_primitive = TC.get_LUTs(name=D_LUT_in.bel_key).pop()
             #LUT_primitive.set_LUT(D_LUT_in, function)
 
         for ff in R_CUT.FFs_set:
             D_ff = copy.deepcopy(ff)
             D_ff.name = nodes_dict[ff.name]
-            self.FFs_set.add(D_ff)
+            extend_dict(TC.FFs, D_ff.bel_key, D_ff.name)
+            #self.FFs_set.add(D_ff)
 
         return G
 
@@ -237,7 +250,13 @@ class DLOC():
 
     @staticmethod
     def get_direction(node):
-        return RLOC.get_tile(node).split('_')[1]
+        def get_direction(clb_node):
+            if clb_node.startswith('CLEL_R'):
+                dir = 'E'
+            else:
+                dir = 'W'
+
+            return dir
 
     @staticmethod
     def get_slice_type(tile):

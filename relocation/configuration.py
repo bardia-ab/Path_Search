@@ -7,6 +7,7 @@ class Configuration:
         self.CUTs               = []
         #self.LUTs               = device.LUTs.copy()
         self.LUTs               = {}
+        self.FFs                = {}
 
     def add_DLOC_CUT(self, DLOC_G):
         DLOC_nodes = []

@@ -6,14 +6,13 @@ from Functions import *
 
 start_time = time.time()
 
+origin = 'X46Y90'
+tile = f'INT_{origin}'
 l = len(os.listdir(GM.store_path))
 GM.store_path = os.path.join(GM.store_path, f'iter{l}')
 GM.DLOC_path = os.path.join(GM.DLOC_path, f'iter{l}')
 #create_folder(GM.DLOC_path)
-TC0 = load_data(GM.store_path, 'TC0.data')
-origin = TC0.CUTs[0].origin
-tile = f'INT_{origin}'
-del TC0
+
 
 device = Arch('ZCU9')
 INTs = device.limit(38, 51, 60, 119)

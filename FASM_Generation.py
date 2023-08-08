@@ -19,8 +19,6 @@ for TC_idx, file in enumerate(files):
     TC = load_data(GM.DLOC_path, file)
     for R_CUT in TC.CUTs:
         for D_CUT in R_CUT.D_CUTs:
-        #for origin in R_CUT.origins:
-            #DLOC_G = R_CUT.get_DLOC_G(device, TC, origin)
             pips = {Edge(edge) for edge in D_CUT.G.edges() if RLOC.is_pip(edge)}
             configurations.extend(const.get_pip_FASM(*pips))
 
