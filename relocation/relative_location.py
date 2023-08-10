@@ -124,12 +124,7 @@ class RLOC:
 
     @staticmethod
     def get_direction(clb_node):
-        if clb_node.startswith('CLEL_R'):
-            dir = 'E'
-        else:
-            dir = 'W'
-
-        return dir
+        return clb_node.split('_')[1]
 
     @staticmethod
     def get_slice_type(tile):
@@ -249,14 +244,8 @@ class DLOC():
             return False
 
     @staticmethod
-    def get_direction(node):
-        def get_direction(clb_node):
-            if clb_node.startswith('CLEL_R'):
-                dir = 'E'
-            else:
-                dir = 'W'
-
-            return dir
+    def get_direction(clb_node):
+        return clb_node.split('_')[1]
 
     @staticmethod
     def get_slice_type(tile):

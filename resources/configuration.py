@@ -8,6 +8,7 @@ from resources.primitive import LUT
 from Functions import *
 from itertools import product
 import Global_Module as GM
+from tqdm import tqdm, trange
 import copy, time
 
 class Configuration():
@@ -565,7 +566,7 @@ class Configuration():
     def sort_pips(self, pips):
         return sorted(pips, key=lambda x: GM.pips_length_dict[x], reverse=True)
 
-    def finish_TC(self, queue, free_cap=8):
+    def finish_TC(self, queue, pbar, free_cap=8):
         #capacity = free_cap - len(self.CUTs)
         l_covered_pips = 3424 - len(queue)
         cond2 = time.time() - self.start_TC_time > (self.long_TC_process_time + 15 * (l_covered_pips // 1000))
@@ -576,16 +577,19 @@ class Configuration():
             cond4 = False
 
         if cond2:
-            print('Long TC Process Time!!!')
-            print('-----------------------------------------------------')
+            #print('Long TC Process Time!!!')
+            pbar.set_postfix_str('Long TC Process Time!!!')
+            #print('-----------------------------------------------------')
             return True
         elif cond3:
-            print('Queue is empty!!!')
-            print('-----------------------------------------------------')
+            #print('Queue is empty!!!')
+            pbar.set_postfix_str('Queue is empty!!!')
+            #print('-----------------------------------------------------')
             return True
         elif not cond4:
-            print('No path between sourse and sink!!!')
-            print('-----------------------------------------------------')
+            #print('No path between sourse and sink!!!')
+            pbar.set_postfix_str('No path between sourse and sink!!!')
+            #print('-----------------------------------------------------')
             return True
         else:
             return False
@@ -1058,7 +1062,7 @@ class Configuration():
 
         return queue
 
-    def fill_3(self, dev, queue, coord, TC_idx, c):
+    def fill_3(self, dev, queue, coord, pbar, TC_idx, c):
         int_tile = f'INT_{coord}'
         out_nodes = {edge[1] for edge in queue}
         '''invalid_out_nodes = set()
@@ -1071,7 +1075,9 @@ class Configuration():
         for node in out_nodes:
             self.G.add_edge('out_node', node, weight=0)
 
-        while not self.finish_TC(queue, free_cap=16):
+        #CUT_pbar = trange(16)
+        #CUT_pbar.set_description(f'TC{TC_idx}')
+        while not self.finish_TC(queue, pbar, free_cap=16):
             out_nodes = {edge[1] for edge in queue}
             excess_out_nodes = set(self.G.neighbors('out_node')) - out_nodes
             excess_out_node_edges = set(product({'out_node'}, excess_out_nodes))
@@ -1095,14 +1101,14 @@ class Configuration():
                 for edge in main_path.edges:
                     self.G.get_edge_data(*edge)['weight'] += 1 / len(main_path)
                 self.add_edges(('out_node', pip[1]), weight=1)
-                print(f'long path => {pip} : {len(main_path) - GM.pips_length_dict[pip]}')
+                #print(f'long path => {pip} : {len(main_path) - GM.pips_length_dict[pip]}')
                 continue
 
             if not (set(queue) & self.CUTs[-1].covered_pips):
                 self.remove_CUT(dev)
                 self.G.get_edge_data(*pip)['weight'] += 30
                 self.add_edges(('out_node', pip[1]), weight=0)
-                print('No new pip', pip)
+                #print('No new pip', pip)
                 continue
 
             not_LUT_ins = dev.get_nodes(is_i6=False, clb_node_type='LUT_in', bel=main_path[0].bel, tile=main_path[0].tile)
@@ -1139,11 +1145,15 @@ class Configuration():
             l1 = len(queue)
             queue = [pip for pip in queue if pip not in self.CUTs[-1].covered_pips]
             l2 = len(queue)
+            pbar.set_description(f'TC{TC_idx} >> CUT{len(self.CUTs)} >> Remaining PIPs')
+            pbar.set_postfix_str('')
+            pbar.update(l1 - l2)
+            #CUT_pbar.update(16 - len(self.CUTs))
             if l1 == l2:
                 c += 1
 
-            print(f'TC{TC_idx}- Found Paths: {len(self.CUTs)}')
-            print(f'Remaining PIPs: {len(queue)}')
+            #print(f'TC{TC_idx}- Found Paths: {len(self.CUTs)}')
+            #print(f'Remaining PIPs: {len(queue)}')
 
         self.G.remove_node('out_node')
 

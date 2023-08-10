@@ -13,6 +13,7 @@ from resources.configuration import *
 from resources.arch_graph import Arch
 import resources.validation as vd
 from itertools import product
+from tqdm import tqdm, trange
 
 start_time = time.time()
 coord = 'X46Y90'
@@ -45,6 +46,8 @@ l_queue = len(queue)
 TC_idx = 0
 #TC_idx=119
 c = 0
+pbar = trange(l_queue)
+
 while queue:
     TC = Configuration(dev)
     TC.remove_route_thrus(coord)
@@ -61,7 +64,7 @@ while queue:
         for edge in other_edges:
             dev.G.get_edge_data(*edge)['weight'] = 1'''
 
-    queue = TC.fill_3(dev, queue, coord, TC_idx, c)
+    queue = TC.fill_3(dev, queue, coord, pbar, TC_idx, c)
 
     if (l_queue - len(queue)) > 1500:
         l_queue = len(queue)
