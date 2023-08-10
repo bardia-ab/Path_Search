@@ -1,4 +1,7 @@
 import re
+from Functions import load_data, store_data
+import Global_Module as GM
+from relocation.relative_location import RLOC, DLOC
 class Configuration:
 
     covered_pips_dict = {}
@@ -123,6 +126,21 @@ class Configuration:
             return LUT_primitives[:1]
         else:
             return []
+
+    def sort_covered_pips(self, x_min, x_max, y_min, y_max):
+        keys = []
+        for key in self.covered_pips_dict:
+            if key.startswith('CLE'):
+                continue
+            [x, y] = re.findall('\d+', key)
+            x = int(x)
+            y = int(y)
+            if (x_min <= x <= x_max) and (y_min <= y <= y_max):
+                keys.append(key)
+
+        keys = sorted(keys, key=lambda x: len(self.covered_pips_dict[x]))
+        self.covered_pips_dict = {k: self.covered_pips_dict[k] for k in keys}
+
     @staticmethod
     def is_pip(edge):
         if Configuration.get_tile(edge[0]) == Configuration.get_tile(edge[1]):

@@ -7,6 +7,7 @@ from relocation.configuration import Configuration
 from relocation.relative_location import RLOC
 import resources.constraint as const
 from resources.edge import Edge
+from tqdm import tqdm
 
 start_time = time.time()
 
@@ -14,6 +15,8 @@ GM.DLOC_path = os.path.join(GM.DLOC_path, 'iter1')
 device = Arch('ZCU9')
 
 files = sorted(os.listdir(GM.DLOC_path), key= lambda x: int(re.findall('\d+', x).pop()), reverse=False)
+qbar = tqdm(total=len(files))
+
 for TC_idx, file in enumerate(files):
     configurations = []
     TC = load_data(GM.DLOC_path, file)
@@ -23,6 +26,8 @@ for TC_idx, file in enumerate(files):
             configurations.extend(const.get_pip_FASM(*pips))
 
     configurations.extend(const.get_LUTs_FASM(TC.LUTs))
+    qbar.update(TC_idx)
+    qbar.set_description(f'TC{TC_idx}')
 
 #print(configurations[0])
 print(len(configurations))

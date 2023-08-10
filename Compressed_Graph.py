@@ -3,7 +3,7 @@ from resources.configuration import Configuration
 from resources.arch_graph import Arch
 start_time = time.time()
 
-coordinate = 'X46Y90'
+coordinate = 'X45Y90'
 desired_tile = 'INT_' + coordinate
 device = 'ZU9'
 

@@ -1,9 +1,9 @@
-import heapq
+import heapq, os
 
 import Global_Module
 from resources.tile import *
 from resources.primitive import *
-from Functions import extend_dict, weight_function
+from Functions import extend_dict, weight_function, load_data
 
 class Arch:
     def __init__(self, G):
@@ -226,6 +226,29 @@ class Arch:
     @staticmethod
     def port_suffix(node):
         return node.split('_SITE_0_')[-1]
+
+
+    def reconstruct_device(self, l, coord):
+        queue = list(GM.pips_length_dict)
+        if l > 1:
+            files = sorted(os.listdir(os.path.join(GM.store_path, f'iter{l - 1}')),
+                           key=lambda x: int(re.findall('\d+', x).pop()), reverse=False)
+            TC_last = load_data(os.path.join(GM.store_path, f'iter{l - 1}'), files[-1])
+            for edge in TC_last.G_dev.edges():
+                if edge in self.G.edges():
+                    if edge not in TC_last.G:
+                        continue  # route_thrus
+
+                    self.G.get_edge_data(*edge)['weight'] = TC_last.G.get_edge_data(*edge)['weight']
+
+            pips_dict = load_data(GM.Data_path, 'covered_pips_dict.data')
+            tile = f'INT_{coord}'
+            pips = pips_dict[tile]
+            pips = {(f'{tile}/{pip[0]}', f'{tile}/{pip[1]}') for pip in pips}
+            queue = list(set(queue) - pips)
+
+
+        return queue
 
     def reform_cost(self):
         for edge in self.G.edges():
