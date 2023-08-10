@@ -22,6 +22,8 @@ for TC_idx, file in enumerate(files):
             pips = {Edge(edge) for edge in D_CUT.G.edges() if RLOC.is_pip(edge)}
             configurations.extend(const.get_pip_FASM(*pips))
 
-print(configurations[0])
+    configurations.extend(const.get_LUTs_FASM(TC.LUTs))
+
+#print(configurations[0])
 print(len(configurations))
 print('--- %s seconds ---' %(time.time() - start_time))

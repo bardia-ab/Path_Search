@@ -132,17 +132,17 @@ def get_LUTs_FASM(LUTs_dict):
         bel = get_port(LUT)[0]
 
         if len(LUTs_dict[LUT]) == 1:    #6LUT
-            input_idx = int(LUTs_dict[LUT][0][-1])
-            function = LUTs_dict[LUT][1]
+            input_idx = int(LUTs_dict[LUT][0][0][-1]) - 1
+            function = LUTs_dict[LUT][0][1]
             INIT = f"64'h{cal_init(input_idx, function, 6)}"
-            if LUTs_dict[LUT][2] == 'MUX':
+            if LUTs_dict[LUT][0][2] == 'MUX':
                 configurations.append(get_OUTMUx_FASM(tile, bel, 6))
         else:                           #5LUT & 6LUT
             subLUTs = sorted(LUTs_dict[LUT], key=lambda x: 0 if x[2]=='O' else 1)
             INIT = []
             for s_idx, subLUT in enumerate(subLUTs):
-                input_idx = int(subLUT[0][-1])
-                function = LUTs_dict[LUT][1]
+                input_idx = int(subLUT[0][-1]) - 1
+                function = subLUT[1]
                 if input_idx == 6:
                     INIT = f"64'h{cal_init(input_idx, function, 6)}"
                     break
@@ -159,6 +159,8 @@ def get_LUTs_FASM(LUTs_dict):
         configurations.append(f'{tile}.PIP.{i6_port}.VCC_WIRE = {{}}\n')
         configurations.append(INIT_conf)
 
+    return configurations
+
 def get_truth_table(n_entry):
     truth_table = list(product((0, 1), repeat=n_entry))
     return [entry[::-1] for entry in truth_table]
@@ -174,7 +176,7 @@ def cal_init(input_idx, function, N_inputs):
 
     init_list.reverse()
     init_binary = ''.join(init_list)
-    init = format(int(init_binary, base=2), f'016X')
+    init = format(int(init_binary, base=2), f'0{2**N_inputs//4}X')
 
     return init
 
