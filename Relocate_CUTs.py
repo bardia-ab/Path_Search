@@ -9,10 +9,13 @@ start_time = time.time()
 
 origin = 'X46Y90'
 tile = f'INT_{origin}'
-l = len(os.listdir(GM.store_path))
-GM.store_path = os.path.join(GM.store_path, f'iter{l}')
-GM.DLOC_path = os.path.join(GM.DLOC_path, f'iter{l}')
-create_folder(GM.DLOC_path)
+if origin == 'X46Y90':
+    GM.store_path = os.path.join(GM.store_path, 'iter1')
+    create_folder(GM.store_path)
+else:
+    l = len(os.listdir(GM.store_path))
+    GM.store_path = os.path.join(GM.store_path, f'iter{l}')
+    create_folder(GM.store_path)
 
 device = Arch('ZCU9')
 INTs = device.limit(38, 51, 60, 119)
