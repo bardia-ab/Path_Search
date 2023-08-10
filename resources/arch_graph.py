@@ -4,12 +4,14 @@ import Global_Module
 from resources.tile import *
 from resources.primitive import *
 from Functions import extend_dict, weight_function
+
 class Arch:
     def __init__(self, G):
         self.G          = G
         self.tiles      = set()
         self.wires_dict = {}
         self.init_tiles()
+        self.Init_tile_node_dicts()
         self.reform_cost()
         self.weight = weight_function(G, 'weight')
 
@@ -20,6 +22,42 @@ class Arch:
             tile1 = Tile(tile, self.G)
             tile1.edges = set(filter(lambda x: re.search(tile1.name, f'{x.u} {x.v}'), all_edges))
             self.tiles.add(tile1)
+
+    def Init_tile_node_dicts(self):
+        self.tile_dirc_dict = {}
+        self.gnode_dict = {}
+        for tile in self.tiles:
+            if tile.type == 'CLB':
+                self.tile_dirc_dict[tile.name] = tile.direction
+
+            for node in tile.nodes:
+                if node.tile_type == 'INT':
+                    key = node.port
+                    value = node.tile
+                    extend_dict(self.gnode_dict, key, value, value_type='set')
+                else:
+                    key1 = node.port_suffix
+                    key2 = node.bel_group[0]
+                    value = node.tile
+                    if key1 not in self.gnode_dict:
+                        self.gnode_dict[key1] = {key2: {value}}
+                    else:
+                        extend_dict(self.gnode_dict[key1], key2, value, value_type='set')
+
+    def get_gnodes(self, node):
+        gnodes = set()
+        if node.startswith('INT'):
+            port = self.get_port(node)
+            for tile in self.gnode_dict[port]:
+                gnodes.add(f'{tile}/{port}')
+        else:
+            dirc = self.tile_dirc_dict[self.get_tile(node)]
+            port_suffix = self.port_suffix(node)
+            slice_type = self.get_slice_type(node)
+            for tile in self.gnode_dict[port_suffix][dirc]:
+                gnodes.add(f'{tile}/CLE_CLE_{slice_type}_SITE_0_{port_suffix}')
+
+        return gnodes
 
     def gen_FFs(self):
         FFs = set()
@@ -169,6 +207,25 @@ class Arch:
     def get_port(wire, delimiter='/'):
         return wire.split(delimiter)[1]
 
+    @staticmethod
+    def get_direction(clb_node):
+        if clb_node.startswith('CLEL_R'):
+            dir = 'E'
+        else:
+            dir = 'W'
+
+        return dir
+
+    @staticmethod
+    def get_slice_type(tile):
+        if tile.startswith('CLEM'):
+            return 'M'
+        else:
+            return 'L'
+
+    @staticmethod
+    def port_suffix(node):
+        return node.split('_SITE_0_')[-1]
 
     def reform_cost(self):
         for edge in self.G.edges():

@@ -99,7 +99,7 @@ class Configuration:
 
             for LUT_primitive in LUT_primitives:
                 LUT_primitive.inputs = node.name
-                LUT_primitive.func   = LUTs_func_dict[node]
+                LUT_primitive.Init_tile_node_dicts   = LUTs_func_dict[node]
                 LUT_primitive.usage  = usage
 
     def get_subLUT(self, usage, node, next_iter_initalization=False):

@@ -180,10 +180,11 @@ class Configuration():
         self.block_nodes = path
         global_nodes = set()
         for node in path:
-            if node.tile_type == 'INT':
+            '''if node.tile_type == 'INT':
                 global_nodes.update(device.get_nodes(port=node.port))
             else:
-                global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))
+                global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))'''
+            global_nodes = device.get_gnodes(node.name)
 
         global_nodes = global_nodes - set(path)
         if GM.block_mode == 'global':
@@ -286,10 +287,11 @@ class Configuration():
             self.unblock_nodes(device, path.nodes)
             self.reset_CDs(device, path)
             for node in path:
-                if node.tile_type == 'INT':
+                '''if node.tile_type == 'INT':
                     global_nodes.update(device.get_nodes(port=node.port))
                 else:
-                    global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))
+                    global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))'''
+                global_nodes = device.get_gnodes(node.name)
 
             global_nodes = global_nodes - set(path)
             if GM.block_mode == 'global':
@@ -375,7 +377,7 @@ class Configuration():
 
             for LUT_primitive in LUT_primitives:
                 LUT_primitive.inputs = node.name
-                LUT_primitive.func   = LUTs_func_dict[node]
+                LUT_primitive.Init_tile_node_dicts   = LUTs_func_dict[node]
                 LUT_primitive.usage  = usage
 
             ### block i6
