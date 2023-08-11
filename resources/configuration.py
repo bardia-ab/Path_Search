@@ -229,26 +229,29 @@ class Configuration():
             self.G.get_edge_data(*edge)['weight'] -= 1e4
 
     def get_FFs(self, **attributes):
-        FFs = set()
-        for FF in self.FFs:
-            for attr in attributes:
-                if getattr(FF, attr) != attributes[attr]:
-                    break
-            else:
-                FFs.add(FF)
+        all_FFs = self.FFs.copy()
+        for k, v in attributes.items():
+            FFs = set()
+            for node in all_FFs:
+                if getattr(node, k) == v:
+                    FFs.add(node)
 
-        return FFs
+            all_FFs = FFs.copy()
+
+        return all_FFs
+
 
     def get_LUTs(self, **attributes):
-        LUTs = set()
-        for LUT in self.LUTs:
-            for attr in attributes:
-                if getattr(LUT, attr) != attributes[attr]:
-                    break
-            else:
-                LUTs.add(LUT)
+        all_LUTs = self.LUTs.copy()
+        for k, v in attributes.items():
+            LUTs = set()
+            for node in all_LUTs:
+                if getattr(node, k) == v:
+                    LUTs.add(node)
 
-        return LUTs
+            all_LUTs = LUTs.copy()
+
+        return all_LUTs
 
     def create_CUT(self, coord, pip):
         cut = CUT(coord, pip=pip)
