@@ -91,15 +91,16 @@ class Arch:
 
     def get_nodes(self, **attributes):
         all_nodes = {node for tile in self.tiles for node in tile.nodes}
-        nodes = set()
-        for node in all_nodes:
-            for attr in attributes:
-                if getattr(node, attr) != attributes[attr]:
-                    break
-            else:
-                nodes.add(node)
+        for k, v in attributes.items():
+            nodes = set()
+            for node in all_nodes:
+                if getattr(node, k) == v:
+                    nodes.add(node)
 
-        return nodes
+            all_nodes = nodes.copy()
+
+        return all_nodes
+
 
     def get_edges(self, **attributes):
         all_edges = {edge for tile in self.tiles for edge in tile.edges}
