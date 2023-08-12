@@ -13,20 +13,31 @@ import copy, time
 
 class Configuration():
 
-    def __init__(self, device):
+    def __init__(self, device, TC_total=None):
         self.G                      = copy.deepcopy(device.G)
         self.G_TC                   = nx.DiGraph()
-        self.FFs                    = device.gen_FFs()
-        self.LUTs                   = device.gen_LUTs()
+        self.FFs                    = device.gen_FFs(TC_total)
+        self.LUTs                   = device.gen_LUTs(TC_total)
         self._block_nodes           = set()
         self._block_edges           = set()
         self.CD                     = {'W_T': None, 'W_B': None, 'E_T': None, 'E_B': None}
         self.CUTs                   = []
         self.tried_pips             = set()
         self.route_thrus            = {}
-        self.start_TC_time          = time.time()
         self.long_TC_process_time   = 120
         self.assign_source_sink()
+        if TC_total:
+            blocked_nodes = {f'{tile}/{port}' for tile, ports in TC_total.used_nodes_dict.items() for port in ports}
+            self.block_nodes = blocked_nodes
+            self.G.remove_nodes_from(blocked_nodes)
+            self.CD = TC_total.CD.copy()
+            for group, function in self.CD.items():
+                self.remove_source_sink(device, group, function)
+
+            edges = set(product({'s'}, TC_total.invalid_source_FFs))
+            self.G.remove_edges_from(edges)
+
+        self.start_TC_time = time.time()
 
     @staticmethod
     def get_direction(clb_node):
@@ -722,7 +733,7 @@ class Configuration():
                     breakpoint()
                     raise f"Conflict in Clock Group {group}: {clock_groups[path.path_type][1]} group"
 
-    def remove_source_sink(self, device, group, function, tile):
+    def remove_source_sink(self, device, group, function, tile=None):
         if function == 'launch':
             FFs_in = set()
             LUTs_in = set()
