@@ -5,9 +5,9 @@ from resources.node import *
 from resources.edge import *
 
 class Tile:
-    def __init__(self, name, G):
+    def __init__(self, name, G, tile_nodes):
         self.name   = name
-        self.nodes  = self.add_nodes(G)
+        self.nodes  = self.add_nodes(G, tile_nodes)
         self.edges  = set()
         # self.edges is initialized in arch_graph >> init_tiles()
         #self.edges  = self.add_edges(G)
@@ -51,13 +51,10 @@ class Tile:
 
         return dir
 
-    def add_nodes(self, G: nx.DiGraph):
+    def add_nodes(self, G, tile_nodes):
         nodes = set()
-        for node in G:
-            if Node(node).tile != self.name:
-                continue
-
-            Node1 = Node(node)
+        for node in tile_nodes:
+            Node1 = Node(f'{self.name}/{node}')
             Node1.mode = Node1.set_INT_node_mode(G)
             nodes.add(Node1)
 
