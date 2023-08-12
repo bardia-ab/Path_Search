@@ -1,5 +1,5 @@
 import networkx as nx
-import re, os, pickle, shutil, bz2, time
+import re, os, pickle, shutil, bz2, sys, time
 import Global_Module as GM
 from itertools import count, product
 from heapq import heappop, heappush, heapify

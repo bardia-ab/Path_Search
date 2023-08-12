@@ -17,7 +17,7 @@ import resources.reconstruction as recon
 from tqdm import tqdm, trange
 
 start_time = time.time()
-coord = 'X45Y90'
+coord = sys.argv[1]
 tile = f'INT_{coord}'
 l = 1 if coord == 'X46Y90' else len(os.listdir(GM.store_path)) + 1
 store_path = os.path.join(GM.store_path, f'iter{l}')
@@ -95,4 +95,4 @@ while queue:
 
 print('Paths with no new PIPs: ', c)
 store_data(GM.Data_path, 'remaining_pips.data', queue)
-#print('--- %s seconds ---' %(time.time() - start_time))
+print('--- %s seconds ---' %(time.time() - start_time))
