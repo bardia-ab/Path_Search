@@ -18,7 +18,7 @@ def get_origin_CUTs_len(idx, path, file, coord):
 
 def sort_TCs(l, coord):
     path = os.path.join(GM.DLOC_path, f'iter{l-1}')
-    files = list(os.listdir(path))
+    files = [file for file in os.listdir(path) if file.startswith('TC')]
     TC_CUT_len = []
     TC_CUT_len.extend(Parallel(n_jobs=-1)(delayed(get_origin_CUTs_len)(idx, path, file, coord) for idx, file in enumerate(files)))
     keys = sorted(TC_CUT_len, key=lambda x: x[1])

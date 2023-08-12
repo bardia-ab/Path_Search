@@ -21,7 +21,7 @@ coord = 'X45Y90'
 tile = f'INT_{coord}'
 l = 1 if coord == 'X46Y90' else len(os.listdir(GM.store_path)) + 1
 store_path = os.path.join(GM.store_path, f'iter{l}')
-#create_folder(store_path)
+create_folder(store_path)
 #################################################
 graph_path = os.path.join(GM.graph_path, f'G_ZU9_INT_{coord}.data')
 G = load_data(GM.graph_path, f'G_ZU9_INT_{coord}.data')
@@ -35,7 +35,11 @@ l_queue = len(queue)
 c = 0
 N_TC = 0
 pbar = trange(l_queue)
-files, TC_prev = recon.sort_TCs(l, coord)
+files, last_TC = recon.sort_TCs(l, coord)
+'''TC_prev = load_data(os.path.join(GM.store_path, f'iter{l-1}'), last_TC)
+for edge in TC_prev.G_dev.edges():
+    if edge in dev.G.edges():
+        dev.G.get_edge_data(*edge)['weight'] = TC_prev.G_dev.get_edge_data(*edge)['weight']'''
 
 for file in files:
     if not queue:
@@ -59,8 +63,8 @@ for file in files:
     queue = TC.fill_3(dev, queue, coord, pbar, N_TC, c)
 
     TC.queue = queue.copy()
-    TC.G_dev = dev.G
-    #store_data(store_path, f'TC{TC_idx}.data', TC)
+    TC.G_dev = dev.G.copy()
+    store_data(store_path, f'TC{TC_idx}.data', TC)
 
     N_TC += 1
     if TC.CUTs:
@@ -80,8 +84,8 @@ while queue:
             dev.G.get_edge_data(*edge)['weight'] = 1
 
     TC.queue = queue.copy()
-    TC.G_dev = dev.G
-    #store_data(store_path, f'TC{TC_idx}.data', TC)
+    TC.G_dev = dev.G.copy()
+    store_data(store_path, f'TC{TC_idx}.data', TC)
 
     if TC.CUTs:
         vd.check_LUT_utel(TC)
@@ -90,5 +94,5 @@ while queue:
         break
 
 print('Paths with no new PIPs: ', c)
-#store_data(GM.Data_path, 'remaining_pips.data', queue)
-print('--- %s seconds ---' %(time.time() - start_time))
+store_data(GM.Data_path, 'remaining_pips.data', queue)
+#print('--- %s seconds ---' %(time.time() - start_time))

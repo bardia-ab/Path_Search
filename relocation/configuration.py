@@ -1,4 +1,4 @@
-import re
+import re, os
 from Functions import load_data, store_data
 import Global_Module as GM
 from relocation.relative_location import RLOC, DLOC
@@ -18,12 +18,6 @@ class Configuration:
     def add_DLOC_CUT(self, DLOC_G):
         DLOC_nodes = []
         for node in DLOC_G:
-            '''if node.startswith('INT'):
-                tile = (self.get_tile(node))
-                port = self.get_port(node)
-            else:
-                tile = f'CLB_{self.get_direction(node)}_{self.get_coordinate(node)}'
-                port = self.get_port(node).split('_SITE_0_')[-1]'''
             tile = self.get_tile(node)
             port = self.get_port(node)
 
@@ -142,6 +136,7 @@ class Configuration:
                     FF2 = subLUT[0][:-1] + 'Q2'
                     self.invalid_source_FFs.update({FF1, FF2})
 
+    @classmethod
     def sort_covered_pips(self, x_min, x_max, y_min, y_max):
         keys = []
         for key in self.covered_pips_dict:

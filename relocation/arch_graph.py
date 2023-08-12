@@ -2,7 +2,7 @@ from Functions import load_data
 from relocation.tile import Tile
 from resources.primitive import LUT, LUT6_2
 import Global_Module as GM
-import re
+import re, os
 class Arch:
 
     def __init__(self, name):
@@ -106,6 +106,26 @@ class Arch:
         self.CLBs = limited_CLBs.copy()
 
         return limited_tiles
+
+    def remove_covered_INTs(self, l, covered_pips_dict, INTs):
+        full_INTs = set()
+        for i in range(1, l):
+            file = os.listdir(os.path.join(GM.store_path, f'iter{i}'))[0]
+            coordinate = load_data(os.path.join(GM.store_path, f'iter{i}'), file).CUTs[0].origin
+            pattern = {k: 1 if v else 0 for k, v in self.tiles_map[coordinate].items()}
+            coords = []
+            for INT in INTs:
+                coord = INT.coordinate
+                p1 = {k: 1 if v else 0 for k, v in self.tiles_map[coord].items()}
+                if p1 == pattern:
+                    coords.append(coord)
+            for coord in coords:
+                if f'INT_{coord}' in covered_pips_dict:
+                    if covered_pips_dict[f'INT_{coordinate}'] == covered_pips_dict[f'INT_{coord}']:
+                        full_INTs.add(coord)
+
+        INTs = [INT for INT in INTs if INT.coordinate not in full_INTs]
+        return INTs
 
     @staticmethod
     def get_x_coord(tile):

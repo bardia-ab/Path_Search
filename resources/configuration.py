@@ -495,12 +495,14 @@ class Configuration():
         for node in FFs_set:
             global_FFs.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))
 
+        global_FFs = {node for node in global_FFs if node.name not in self.block_nodes}
         return global_FFs
 
     def get_global_LUTs(self, device, LUTs_func_dict):
         global_LUTs_func_dict = {}
         for node in LUTs_func_dict:
             global_LUTs = device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix)
+            global_LUTs = {node for node in global_LUTs if node.name not in self.block_nodes}
             for LUT_in in global_LUTs:
                 global_LUTs_func_dict[LUT_in] = LUTs_func_dict[node]
 
