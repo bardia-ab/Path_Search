@@ -8,6 +8,7 @@ from Functions import extend_dict, weight_function, load_data
 class Arch:
     def __init__(self, G):
         self.G          = G
+        self.Init_tile_port_dict()
         self.tiles      = set()
         self.wires_dict = {}
         self.init_tiles()
@@ -17,9 +18,8 @@ class Arch:
 
     def init_tiles(self):
         all_edges = {Edge(edge) for edge in self.G.edges()}
-        tiles_set = {Arch.get_tile(node) for node in self.G}
-        for tile in tiles_set:
-            tile1 = Tile(tile, self.G)
+        for tile, tile_nodes in self.tile_port_dict.items():
+            tile1 = Tile(tile, self.G, tile_nodes)
             tile1.edges = set(filter(lambda x: re.search(tile1.name, f'{x.u} {x.v}'), all_edges))
             self.tiles.add(tile1)
 
@@ -44,6 +44,11 @@ class Arch:
                     else:
                         extend_dict(self.gnode_dict[key1], key2, value, value_type='set')
 
+    def Init_tile_port_dict(self):
+        self.tile_port_dict = {}
+        for node in self.G:
+            extend_dict(self.tile_port_dict, self.get_tile(node), self.get_port(node), value_type='set')
+
     def get_gnodes(self, node):
         gnodes = set()
         if node.startswith('INT'):
@@ -59,21 +64,27 @@ class Arch:
 
         return gnodes
 
-    def gen_FFs(self):
+    def gen_FFs(self, TC_total=None):
+        blocked_FFs = TC_total.FFs if TC_total else set()
         FFs = set()
         for clb in self.get_tiles(type='CLB'):
             for i in range(65, 73):
-                FFs.add(FF(f'{clb.name}/{chr(i)}FF'))
-                FFs.add(FF(f'{clb.name}/{chr(i)}FF2'))
+                FFs.add(f'{clb.name}/{chr(i)}FF')
+                FFs.add(f'{clb.name}/{chr(i)}FF2')
+
+        FFs = {FF(ff) for ff in FFs if ff not in blocked_FFs}
 
         return FFs
 
-    def gen_LUTs(self):
+    def gen_LUTs(self, TC_total=None):
+        blocked_LUTs = TC_total.blocked_LUTs if TC_total else set()
         LUTs = set()
         for clb in self.get_tiles(type='CLB'):
             for i in range(65, 73):
-                LUTs.add(LUT(f'{clb.name}/{chr(i)}5LUT'))
-                LUTs.add(LUT(f'{clb.name}/{chr(i)}6LUT'))
+                LUTs.add(f'{clb.name}/{chr(i)}5LUT')
+                LUTs.add(f'{clb.name}/{chr(i)}6LUT')
+
+        LUTs = {LUT(lut) for lut in LUTs if lut not in blocked_LUTs}
 
         return LUTs
 
