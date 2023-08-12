@@ -21,7 +21,7 @@ coord = 'X45Y90'
 tile = f'INT_{coord}'
 l = 1 if coord == 'X46Y90' else len(os.listdir(GM.store_path)) + 1
 store_path = os.path.join(GM.store_path, f'iter{l}')
-create_folder(store_path)
+#create_folder(store_path)
 #################################################
 graph_path = os.path.join(GM.graph_path, f'G_ZU9_INT_{coord}.data')
 G = load_data(GM.graph_path, f'G_ZU9_INT_{coord}.data')
@@ -42,15 +42,10 @@ for file in files:
         break
 
     TC_idx = int(re.search('\d+', file)[0])
-    TC = Configuration(dev)
+    TC_total = load_data(os.path.join(GM.DLOC_path, f'iter{l - 1}'), f'TC{TC_idx}.data')
+    TC = Configuration(dev, TC_total)
     TC.remove_route_thrus(coord)
-    ########### TC Reconstruction
-    TC, TC_total = recon.block_nodes(TC, TC_idx, l)
-    TC = recon.update_CD(dev, TC, tile, l, TC_prev)
-    TC = recon.block_FFs(TC, TC_idx, l)
-    TC = recon.block_LUTs(dev, TC, TC_idx, l)
-    TC.start_TC_time = time.time()
-    ######################
+
     '''if TC_idx == 163:
         TC = load_data(os.path.join(GM.store_path, 'iter1'), f'TC{TC_idx}.data')
         TC.start_TC_time = time.time()
@@ -65,7 +60,7 @@ for file in files:
 
     TC.queue = queue.copy()
     TC.G_dev = dev.G
-    store_data(store_path, f'TC{TC_idx}.data', TC)
+    #store_data(store_path, f'TC{TC_idx}.data', TC)
 
     N_TC += 1
     if TC.CUTs:
@@ -86,7 +81,7 @@ while queue:
 
     TC.queue = queue.copy()
     TC.G_dev = dev.G
-    store_data(store_path, f'TC{TC_idx}.data', TC)
+    #store_data(store_path, f'TC{TC_idx}.data', TC)
 
     if TC.CUTs:
         vd.check_LUT_utel(TC)
@@ -95,5 +90,5 @@ while queue:
         break
 
 print('Paths with no new PIPs: ', c)
-store_data(GM.Data_path, 'remaining_pips.data', queue)
+#store_data(GM.Data_path, 'remaining_pips.data', queue)
 print('--- %s seconds ---' %(time.time() - start_time))

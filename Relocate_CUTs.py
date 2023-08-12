@@ -44,8 +44,10 @@ for TC_idx, file in enumerate(files):
                 R_CUT.D_CUTs.add(D_CUT)
 
     #print(f'TC{TC_idx} => {time.time() - start_time}')
+    TC.set_blocked_invalid_primitives()
+    TC.CD = conf.CD.copy()
     store_data(GM.DLOC_path, f'TC{TC_idx}.data', TC)
-    pbar.update(TC_idx)
+    pbar.update(1)
     pbar.set_description(f'TC{TC_idx}')
 
 

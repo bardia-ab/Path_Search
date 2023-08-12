@@ -4,6 +4,8 @@ import time, os, re
 import Global_Module as GM
 from Functions import load_data, get_tile, get_port
 from itertools import product
+from resources.arch_graph import Arch
+from resources.configuration import Configuration
 
 def get_origin_CUTs_len(idx, path, file, coord):
     TC = load_data(path, file)
@@ -71,4 +73,30 @@ def update_CD(dev, TC, tile, l, TC_prev):
         TC.remove_source_sink(dev, group, TC.CD[group], tile)
 
     return TC
+
+
+if __name__ == '__main__':
+    coord = 'X45Y90'
+    l = 2
+    TC_idx = 0
+    graph_path = os.path.join(GM.graph_path, f'G_ZU9_INT_{coord}.data')
+    G = load_data(GM.graph_path, f'G_ZU9_INT_{coord}.data')
+
+    dev = Arch(G)
+    dev.get_pips_length(coord)
+    del G
+    queue = dev.reconstruct_device(1, coord)
+
+
+    TC_total = load_data(os.path.join(GM.DLOC_path, f'iter{l - 1}'), f'TC{TC_idx}.data')
+    t1 = time.time()
+    TC = Configuration(dev, TC_total)
+    t2 = time.time()
+    print(t2-t1)
+
+    t1 = time.time()
+    TC = Configuration(dev)
+    t2 = time.time()
+    print(t2 - t1)
+
 

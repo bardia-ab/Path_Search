@@ -10,7 +10,10 @@ class Configuration:
         self.CUTs               = []
         #self.LUTs               = device.LUTs.copy()
         self.LUTs               = {}
+        self.blocked_LUTs       = set()
+        self.invalid_source_FFs = set()
         self.FFs                = {}
+        self.CD                 = {}
 
     def add_DLOC_CUT(self, DLOC_G):
         DLOC_nodes = []
@@ -126,6 +129,18 @@ class Configuration:
             return LUT_primitives[:1]
         else:
             return []
+
+    def set_blocked_invalid_primitives(self):
+        for lut, subLUTs in self.LUTs.items():
+            for i, subLUT in enumerate(subLUTs):
+                idx = 6 - i
+                tile = self.get_tile(lut)
+                bel = self.get_port(lut)[0]
+                self.blocked_LUTs.add(f'{tile}/{bel}{idx}LUT')
+                if i == 1:
+                    FF1 = subLUT[0][:-1] + 'Q'
+                    FF2 = subLUT[0][:-1] + 'Q2'
+                    self.invalid_source_FFs.update({FF1, FF2})
 
     def sort_covered_pips(self, x_min, x_max, y_min, y_max):
         keys = []
