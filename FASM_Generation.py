@@ -23,18 +23,12 @@ for TC_idx, file in enumerate(files):
     TC = load_data(GM.DLOC_path, file)
     for R_CUT in TC.CUTs:
         for D_CUT in R_CUT.D_CUTs:
-            #pips = {Edge(edge) for edge in D_CUT.G.edges() if RLOC.is_pip(edge)}
-            #configurations.update(const.get_pip_FASM(*pips))
+            pips = {Edge(edge) for edge in D_CUT.G.edges() if RLOC.is_pip(edge)}
+            configurations.update(const.get_pip_FASM(*pips))
             pbar.set_description(f'TC{TC_idx} >> CUT{D_CUT.index}')
 
-            a0 = set(filter(lambda x: re.match(GM.FF_out_pattern, x) and D_CUT.G.in_degree(x) == 0, D_CUT.G)).pop()
-            a1 = set(filter(lambda x: re.match(GM.LUT_in_pattern, x) and D_CUT.G.out_degree(x) == 0, D_CUT.G)).pop()
-
-                #print('1-', set(filter(lambda x: re.match(GM.FF_out_pattern, x), D_CUT.G)))
-                #print('2-', set(filter(lambda x: D_CUT.G.in_degree(x) == 0, D_CUT.G)))
-
-    #configurations.update(const.get_FFs_FASM(TC.FFs))
-    #configurations.update(const.get_LUTs_FASM(TC))
+    configurations.update(const.get_FFs_FASM(TC))
+    configurations.update(const.get_LUTs_FASM(TC.LUTs))
     pbar.update(1)
 
 #print(configurations[0])
