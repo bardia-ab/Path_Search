@@ -5,10 +5,12 @@ import Global_Module as GM
 from Functions import *
 from tqdm import tqdm
 from joblib import Parallel, delayed
+import shutil
 
 start_time = time.time()
 
 origin = sys.argv[1]
+#origin = 'X45Y90'
 tile = f'INT_{origin}'
 
 l = len(os.listdir(GM.store_path))
@@ -27,7 +29,8 @@ files = sorted(os.listdir(store_path), key=lambda x: int(re.findall('\d+', x).po
 pbar = tqdm(total=len(files))
 #pbar=None
 
-for TC_idx, file in enumerate(files):
+for idx, file in enumerate(files):
+    TC_idx = int(re.search('\d+', file)[0])
     if l == 1:
         TC = Configuration()
     else:
@@ -35,12 +38,25 @@ for TC_idx, file in enumerate(files):
 
     conf = load_data(store_path, file)
 
+    R_CUTs = []
     for cut_idx, cut in enumerate(conf.CUTs):
         RLOC_idx = (l - 1) * 16 + cut_idx
         R_CUT = RLOC(cut, RLOC_idx)
         TC.CUTs.append(R_CUT)
+        R_CUTs.append(R_CUT)
 
-        for i, INT in enumerate(INTs):
+        D_CUT = DLOC(device, TC, R_CUT, origin)
+        if D_CUT.G is None:
+            breakpoint()
+
+        if TC.add_DLOC_CUT(D_CUT.G):
+            R_CUT.origins.add(origin)
+            R_CUT.D_CUTs.add(D_CUT)
+        else:
+            breakpoint()
+
+    for R_CUT in R_CUTs:
+        for i, INT in enumerate(INTs[1:]):
             coord = INT.name.split('_')[-1]
             D_CUT = DLOC(device, TC, R_CUT, coord)
             if D_CUT.G is None:
@@ -49,13 +65,9 @@ for TC_idx, file in enumerate(files):
             if TC.add_DLOC_CUT(D_CUT.G):
                 R_CUT.origins.add(coord)
                 R_CUT.D_CUTs.add(D_CUT)
-            else:
-                breakpoint()
 
-    #print(f'TC{TC_idx} => {time.time() - start_time}')
     TC.set_blocked_invalid_primitives()
     TC.CD = conf.CD.copy()
-    #covered_pips_dict = TC.covered_pips_dict.copy()
     store_data(DLOC_path, f'TC{TC_idx}.data', TC)
     pbar.update(1)
     pbar.set_description(f'TC{TC_idx}')
@@ -64,4 +76,12 @@ for TC_idx, file in enumerate(files):
 Configuration.sort_covered_pips(38, 51, 60, 119)
 store_data(GM.Data_path, 'covered_pips_dict.data', Configuration.covered_pips_dict)
 store_data(DLOC_path, 'covered_pips_dict.data', Configuration.covered_pips_dict)
+
+DLOC_path_old = os.path.join(GM.DLOC_path, f'iter{l-1}')
+missing_files = set(os.listdir(DLOC_path_old)) - set(os.listdir(DLOC_path))
+for file in missing_files:
+    src = os.path.join(DLOC_path_old, file)
+    dst = os.path.join(DLOC_path, file)
+    shutil.copy(src, dst)
+
 print('\n--- %s seconds ---' %(time.time() - start_time))
