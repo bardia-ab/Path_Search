@@ -1,9 +1,12 @@
+import re
+
 import networkx as nx
 
 from resources.edge import Edge
 from resources.path import Path
 from resources.cut import CUT
 from resources.primitive import *
+import Global_Module as GM
 
 def get_tile (wire, delimiter='/'):
     return wire.split(delimiter)[0]
@@ -114,7 +117,33 @@ def get_CLB_FASM2(device, TC, path: Path, clk):
 
     return configurations
 
-def get_LUTs_FASM(LUTs_dict):
+def get_FFs_FASM(FFs):
+    configurations = set()
+    FF_pins_dct = {
+        'C': {'B': 'CTRL_{}4', 'T': 'CTRL_{}5'},
+        'SR': {'B': 'CTRL_{}6', 'T': 'CTRL_{}7'},
+        'CE': {'B': 'CTRL_{}0', 'T': 'CTRL_{}2'},
+        'CE2': {'B': 'CTRL_{}1', 'T': 'CTRL_{}3'}
+    }
+
+    for ff in FFs:
+        ff =FF(ff)
+        CE_key = 'CE2' if ff.index == 2 else 'CE'
+        FFMUX = f'FFMUX{ff.letter}{ff.index}'
+        tile = f'INT_{ff.coordinate}'
+        C = FF_pins_dct['C'][ff.bel_group[-1]].format(ff.bel_group[0])
+        C = f'{tile}/{C}'
+        SR = FF_pins_dct['SR'][ff.bel_group[-1]].format(ff.bel_group[0])
+        CE = FF_pins_dct[CE_key][ff.bel_group[-1]].format(ff.bel_group[0])
+        if re.match(GM.FF_in_pattern, FFs[ff.name][0]):
+            FFMUX_pin = 'BYP'
+            configurations.add(f'{ff.tile}.{FFMUX}.{FFMUX_pin} = {{}}\n')
+
+        configurations.add(f'{tile}.PIP.{SR}.VCC_WIRE = {{}}\n')
+        configurations.add(f'{tile}.PIP.{CE}.VCC_WIRE = {{}}\n')
+
+    return configurations
+def get_LUTs_FASM(TC):
     i6_dct = {
         'A': 'IMUX_{}18',
         'B': 'IMUX_{}19',
@@ -126,38 +155,51 @@ def get_LUTs_FASM(LUTs_dict):
         'H': 'IMUX_{}47'
     }
 
-    configurations = []
-    for LUT in LUTs_dict:
+    configurations = set()
+    for LUT, subLUTs in TC.LUTs.items():
         tile = get_tile(LUT)
         bel = get_port(LUT)[0]
 
-        if len(LUTs_dict[LUT]) == 1:    #6LUT
-            input_idx = int(LUTs_dict[LUT][0][0][-1]) - 1
-            function = LUTs_dict[LUT][0][1]
+        if len(TC.LUTs[LUT]) == 1:    #6LUT
+            input_idx = int(TC.LUTs[LUT][0][0][-1]) - 1
+            function = TC.LUTs[LUT][0][1]
             INIT = f"64'h{cal_init(input_idx, function, 6)}"
-            if LUTs_dict[LUT][0][2] == 'MUX':
-                configurations.append(get_OUTMUx_FASM(tile, bel, 6))
+            if TC.LUTs[LUT][0][2] == 'MUX':
+                configurations.add(get_OUTMUX_FASM(tile, bel, 6))
+
+            '''if function == 'not':
+                FFMUX_pin = 'D6'
+                configurations.add(get_not_FF_configuration(TC, tile, bel, FFMUX_pin))'''
+
         else:                           #5LUT & 6LUT
-            subLUTs = sorted(LUTs_dict[LUT], key=lambda x: 0 if x[2]=='O' else 1)
+            #subLUTs = sorted(TC.LUTs[LUT], key=lambda x: 0 if x[2]=='O' else 1)
             INIT = []
             for s_idx, subLUT in enumerate(subLUTs):
+                subLUT_idx = 6 - s_idx
                 input_idx = int(subLUT[0][-1]) - 1
                 function = subLUT[1]
                 if input_idx == 6:
                     INIT = f"64'h{cal_init(input_idx, function, 6)}"
+                    '''if function == 'not':
+                        FFMUX_pin = 'D6'
+                        configurations.add(get_not_FF_configuration(TC, tile, bel, FFMUX_pin))'''
+
                     break
                 else:
                     INIT.append(cal_init(input_idx, function, 5))
                     if subLUT[2] == 'MUX':
-                        subLUT_idx = 6 - s_idx
-                        configurations.append(get_OUTMUx_FASM(tile, bel, subLUT_idx))
+                        configurations.add(get_OUTMUX_FASM(tile, bel, subLUT_idx))
+
+                    '''if function == 'not':
+                        FFMUX_pin = f'D{subLUT_idx}'
+                        configurations.add(get_not_FF_configuration(TC, tile, bel, FFMUX_pin))'''
             else:
                 INIT = f"64'h{INIT[0]}{INIT[1]}"
 
         INIT_conf = f'{tile}.{bel}LUT.INIT[63:0] = {INIT}'
         i6_port = i6_dct[bel].format(get_direction(LUT))
-        configurations.append(f'{tile}.PIP.{i6_port}.VCC_WIRE = {{}}\n')
-        configurations.append(INIT_conf)
+        configurations.add(f'{tile}.PIP.{i6_port}.VCC_WIRE = {{}}\n')
+        configurations.add(INIT_conf)
 
     return configurations
 
@@ -180,5 +222,17 @@ def cal_init(input_idx, function, N_inputs):
 
     return init
 
-def get_OUTMUx_FASM(tile, bel, subLUT_idx):
-    return f'{tile}OUTMUX{bel}.D{subLUT_idx} = {{}}\n'
+def get_OUTMUX_FASM(tile, bel, subLUT_idx):
+    return f'{tile}.OUTMUX{bel}.D{subLUT_idx} = {{}}\n'
+
+def get_not_FF_configuration(TC, tile, bel, FFMUX_pin):
+    FF_key_pattern = f'{tile}.{bel}FF2*'
+    used_FFs = {FF_key for FF_key, FF_node in TC.FFs.items() if re.match(FF_key_pattern, FF_key)
+                if re.match(GM.FF_out_pattern, FF_node[0])}.pop()
+    index = 2 if used_FFs[-1] == '2' else 1
+    configuration = get_FFMUX_FASM(tile, bel, index, FFMUX_pin)
+
+    return configuration
+
+def get_FFMUX_FASM(tile, bel, index, FFMUX_pin):
+    return f'{tile}.FFMUX{bel}{index}.{FFMUX_pin} = {{}}\n'

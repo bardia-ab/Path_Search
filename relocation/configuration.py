@@ -125,8 +125,9 @@ class Configuration:
             return []
 
     def set_blocked_invalid_primitives(self):
-        for lut, subLUTs in self.LUTs.items():
-            for i, subLUT in enumerate(subLUTs):
+        for lut in self.LUTs:
+            self.LUTs[lut] = sorted(self.LUTs[lut], key=lambda x: 0 if x[2] == 'O' else 1)
+            for i, subLUT in enumerate(self.LUTs[lut]):
                 idx = 6 - i
                 tile = self.get_tile(lut)
                 bel = self.get_port(lut)[0]
