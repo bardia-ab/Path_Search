@@ -64,4 +64,4 @@ for TC_idx, file in enumerate(files):
 Configuration.sort_covered_pips(38, 51, 60, 119)
 store_data(GM.Data_path, 'covered_pips_dict.data', Configuration.covered_pips_dict)
 store_data(DLOC_path, 'covered_pips_dict.data', Configuration.covered_pips_dict)
-print('--- %s seconds ---' %(time.time() - start_time))
+print('\n--- %s seconds ---' %(time.time() - start_time))

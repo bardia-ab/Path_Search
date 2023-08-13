@@ -95,4 +95,4 @@ while queue:
 
 print('Paths with no new PIPs: ', c)
 store_data(GM.Data_path, 'remaining_pips.data', queue)
-print('--- %s seconds ---' %(time.time() - start_time))
+print('\n--- %s seconds ---' %(time.time() - start_time))

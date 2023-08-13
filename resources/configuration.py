@@ -28,6 +28,9 @@ class Configuration():
         self.assign_source_sink()
         if TC_total:
             blocked_nodes = {f'{tile}/{port}' for tile, ports in TC_total.used_nodes_dict.items() for port in ports}
+            blocked_LUT_ins = set(filter(lambda x: re.match(GM.LUT_in_pattern, x), blocked_nodes))
+            blocked_i6 = {LUT_in[:-1] + '6' for LUT_in in blocked_LUT_ins}
+            blocked_nodes.update(blocked_i6)
             self.block_nodes = blocked_nodes
             self.G.remove_nodes_from(blocked_nodes)
             self.CD = TC_total.CD.copy()
@@ -492,17 +495,19 @@ class Configuration():
 
     def get_global_FFs(self, device, FFs_set):
         global_FFs = set()
+        TC_FF_keys = {ff.name for ff in self.FFs}
         for node in FFs_set:
             global_FFs.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))
 
-        global_FFs = {node for node in global_FFs if node.name not in self.block_nodes}
+        global_FFs = {node for node in global_FFs if node.bel_key in TC_FF_keys}
         return global_FFs
 
     def get_global_LUTs(self, device, LUTs_func_dict):
         global_LUTs_func_dict = {}
+        TC_LUT_keys = {f'{lut.tile}/{lut.letter}LUT' for lut in self.LUTs}
         for node in LUTs_func_dict:
             global_LUTs = device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix)
-            global_LUTs = {node for node in global_LUTs if node.name not in self.block_nodes}
+            global_LUTs = {node for node in global_LUTs if node.bel_key in TC_LUT_keys}
             for LUT_in in global_LUTs:
                 global_LUTs_func_dict[LUT_in] = LUTs_func_dict[node]
 

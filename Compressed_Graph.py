@@ -49,7 +49,7 @@ for pipjunc in out_ports:
     except:
         no_path_ports.add(pipjunc)
 
-print('No Path Ports: ', len(no_path_ports))
+#print('No Path Ports: ', len(no_path_ports))
 removable_nodes = set()
 
 for node in G:
@@ -60,4 +60,4 @@ for node in G:
 G.remove_nodes_from(removable_nodes)
 store_data(GM.graph_path, f'G_{device}_{desired_tile}.data', G)
 
-print('--- %s seconds ---' %(time.time() - start_time))
+print('\n--- %s seconds ---' %(time.time() - start_time))
