@@ -107,8 +107,8 @@ class Arch:
 
         return limited_tiles
 
-    def remove_covered_INTs(self, l, covered_pips_dict, INTs):
-        full_INTs = set()
+    def remove_covered_INTs(self):
+        '''full_INTs = set()
         for i in range(1, l):
             file = os.listdir(os.path.join(GM.store_path, f'iter{i}'))[0]
             coordinate = load_data(os.path.join(GM.store_path, f'iter{i}'), file).CUTs[0].origin
@@ -124,8 +124,25 @@ class Arch:
                     if covered_pips_dict[f'INT_{coordinate}'] == covered_pips_dict[f'INT_{coord}']:
                         full_INTs.add(coord)
 
-        INTs = [INT for INT in INTs if INT.coordinate not in full_INTs]
-        return INTs
+        INTs = [INT for INT in INTs if INT.coordinate not in full_INTs]'''
+        remaining_pips_dict = self.get_remaining_pips_dict()
+        return [INT for INT in self.INTs if INT.name in remaining_pips_dict]
+
+    def get_remaining_pips_dict(self):
+        covered_pips_dict = load_data(GM.Data_path, 'covered_pips_dict.data')
+        remaining_pips = {}
+        for INT in covered_pips_dict:
+            coordinate = INT.split('_')[1]
+            pattern = {k: 1 if v else 0 for k, v in self.tiles_map[coordinate].items()}
+            N_pips = 3424 if all(pattern.values()) else 2480
+            N_remaining = N_pips - len(covered_pips_dict[INT])
+            if N_remaining:
+                remaining_pips[INT] = N_remaining
+
+        keys = sorted(remaining_pips, key=remaining_pips.get, reverse=True)
+        remaining_pips = {k: remaining_pips[k] for k in keys}
+
+        return remaining_pips
 
     @staticmethod
     def get_x_coord(tile):

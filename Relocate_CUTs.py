@@ -10,7 +10,7 @@ import shutil
 start_time = time.time()
 
 origin = sys.argv[1]
-#origin = 'X45Y90'
+#origin = 'X48Y60'
 tile = f'INT_{origin}'
 
 l = len(os.listdir(GM.store_path))
@@ -21,8 +21,7 @@ covered_pips_dict = load_data(os.path.join(GM.DLOC_path, f'iter{l-1}'), 'covered
 Configuration.covered_pips_dict = covered_pips_dict.copy()
 
 device = Arch('ZCU9')
-INTs = device.limit(38, 51, 60, 119)
-INTs = device.remove_covered_INTs(l, covered_pips_dict, INTs)
+INTs = device.limit(38, 51, 60, 119) if l == 1 else device.remove_covered_INTs()
 INTs = device.sort_INTs(INTs, tile)
 
 files = sorted(os.listdir(store_path), key=lambda x: int(re.findall('\d+', x).pop()), reverse=False)
