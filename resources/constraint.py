@@ -227,3 +227,69 @@ def get_not_FF_configuration(TC, tile, bel, FF_index):
 
 def get_FFMUX_FASM(tile, bel, FF_index, FFMUX_pin):
     return f'{tile}.FFMUX{bel}{FF_index}.{FFMUX_pin} = {{}}\n'
+
+
+def get_D_CUT_cells(TC, slices_dict, D_CUT):
+    cells = {}
+    launch_FF_key = {key for key in D_CUT.FFs_set if re.match(GM.FF_out_pattern, TC.FFs[key][0])}.pop()
+    slice = slices_dict[get_tile(launch_FF_key)]
+    bel = get_port(launch_FF_key)
+    cells['launch_FF'] = (slice, bel)
+    sample_FF_key = {key for key in D_CUT.FFs_set if re.match(GM.FF_in_pattern, TC.FFs[key][0])}.pop()
+    slice = slices_dict[get_tile(sample_FF_key)]
+    bel = get_port(sample_FF_key)
+    cells['sample_FF'] = (slice, bel)
+    not_LUT_key = D_CUT.not_LUT[0]
+    slice = slices_dict[get_tile(not_LUT_key)]
+    subLUT = [lut for lut in TC.LUTs[not_LUT_key] if (D_CUT.not_LUT[1] == lut[0]) and (lut[1] == 'not')].pop()
+    idx = 6 - TC.LUTs[not_LUT_key].index(subLUT)
+    input = subLUT[0]
+    bel = f'{get_port(not_LUT_key)[0]}{idx}LUT'
+    cells['not_LUT'] = (slice, bel, input)
+
+    return cells
+
+
+
+class Cell:
+    cells = []
+    def __init__(self, type, slice, bel, cell_name):
+        self.type       = type
+        self.slice      = slice
+        self.bel        = bel
+        self.cell_name  = cell_name
+        self._inputs    = []
+
+        self.cells.append(self)
+
+    @property
+    def inputs(self):
+        return self._inputs
+
+    @inputs.setter
+    def inputs(self, input):
+        self._inputs.append(input)
+
+    def get_BEL(self):
+        return f'set_property BEL {self.bel} [get_cells {self.cell_name}]\n'
+
+    def get_LOC(self):
+        return f'set_property LOC {self.slice} [get_cells {self.cell_name}]\n'
+
+    def get_LOCK_PINS(self):
+        pairs = []
+        for i, input in enumerate(self.inputs):
+            pairs.append(f'I{i}:A{input[-1]}')
+
+        return f'set_property LOCK_PINS {{{" ".join(pairs)}}} [get_cells {self.cell_name}]\n'
+
+    @classmethod
+    def get_cell_constraints(cls):
+        constraints = []
+        for cell in cls.cells:
+            constraints.append(cell.get_LOC())
+            constraints.append(cell.get_BEL())
+            if cell.type == 'LUT':
+                constraints.append(cell.get_LOCK_PINS())
+
+        return constraints

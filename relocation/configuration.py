@@ -16,21 +16,10 @@ class Configuration:
         self.CD                 = {}
 
     def add_DLOC_CUT(self, DLOC_G):
-        DLOC_nodes = []
         for node in DLOC_G:
             tile = self.get_tile(node)
             port = self.get_port(node)
-
-            if tile in self.used_nodes_dict:
-                if port in self.used_nodes_dict[tile]:
-                    return False      # Collision
-                else:
-                    DLOC_nodes.append((tile, port))
-            else:
-                DLOC_nodes.append((tile, port))
-
-        for element in DLOC_nodes:
-            self.extend_dict(self.used_nodes_dict, element[0], element[1], value_type='set')
+            self.extend_dict(self.used_nodes_dict, tile, port, value_type='set')
 
         for edge in DLOC_G.edges():
             if self.is_pip(edge):
@@ -40,12 +29,8 @@ class Configuration:
                 else:
                     key = self.get_tile(edge[0])
                     value = (self.get_port(edge[0]), self.get_port(edge[1]))
-                    #key = f'CLB_{self.get_direction(edge[0])}_{self.get_coordinate(edge[0])}'
-                    #value = (self.get_port(edge[0]).split('_SITE_0_')[-1], self.get_port(edge[1]).split('_SITE_0_')[-1])
 
                 self.extend_dict(Configuration.covered_pips_dict, key, value, value_type='set')
-
-        return True
 
     def add_D_CUT(self, D_CUT):
         DLOC_nodes = []
@@ -126,6 +111,7 @@ class Configuration:
 
     def set_blocked_invalid_primitives(self):
         for lut in self.LUTs:
+            #self.LUTs[lut] = set(self.LUTs[lut] )
             self.LUTs[lut] = sorted(self.LUTs[lut], key=lambda x: 0 if x[2] == 'O' else 1)
             for i, subLUT in enumerate(self.LUTs[lut]):
                 idx = 6 - i

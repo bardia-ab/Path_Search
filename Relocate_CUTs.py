@@ -10,7 +10,7 @@ import shutil
 start_time = time.time()
 
 origin = sys.argv[1]
-#origin = 'X48Y60'
+#origin = 'X51Y119'
 tile = f'INT_{origin}'
 
 l = len(os.listdir(GM.store_path))
@@ -48,11 +48,9 @@ for idx, file in enumerate(files):
         if D_CUT.G is None:
             breakpoint()
 
-        if TC.add_DLOC_CUT(D_CUT.G):
-            R_CUT.origins.add(origin)
-            R_CUT.D_CUTs.add(D_CUT)
-        else:
-            breakpoint()
+        TC.add_DLOC_CUT(D_CUT.G)
+        R_CUT.origins.add(origin)
+        R_CUT.D_CUTs.add(D_CUT)
 
     for R_CUT in R_CUTs:
         for i, INT in enumerate(INTs[1:]):
@@ -61,9 +59,9 @@ for idx, file in enumerate(files):
             if D_CUT.G is None:
                 continue
 
-            if TC.add_DLOC_CUT(D_CUT.G):
-                R_CUT.origins.add(coord)
-                R_CUT.D_CUTs.add(D_CUT)
+            TC.add_DLOC_CUT(D_CUT.G)
+            R_CUT.origins.add(coord)
+            R_CUT.D_CUTs.add(D_CUT)
 
     TC.set_blocked_invalid_primitives()
     TC.CD = conf.CD.copy()
@@ -76,11 +74,12 @@ Configuration.sort_covered_pips(38, 51, 60, 119)
 store_data(GM.Data_path, 'covered_pips_dict.data', Configuration.covered_pips_dict)
 store_data(DLOC_path, 'covered_pips_dict.data', Configuration.covered_pips_dict)
 
-DLOC_path_old = os.path.join(GM.DLOC_path, f'iter{l-1}')
-missing_files = set(os.listdir(DLOC_path_old)) - set(os.listdir(DLOC_path))
-for file in missing_files:
-    src = os.path.join(DLOC_path_old, file)
-    dst = os.path.join(DLOC_path, file)
-    shutil.copy(src, dst)
+if l > 1:
+    DLOC_path_old = os.path.join(GM.DLOC_path, f'iter{l-1}')
+    missing_files = set(os.listdir(DLOC_path_old)) - set(os.listdir(DLOC_path))
+    for file in missing_files:
+        src = os.path.join(DLOC_path_old, file)
+        dst = os.path.join(DLOC_path, file)
+        shutil.copy(src, dst)
 
 print('\n--- %s seconds ---' %(time.time() - start_time))

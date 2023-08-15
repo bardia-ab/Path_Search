@@ -93,16 +93,17 @@ class CUT:
                 for n_idx, node in enumerate(lst):
                     if node in branch_dct:
                         for nested_branch in branch_dct[node]:
-                            branch_dct[key][b_idx][n_idx] += f" {{{' '.join(nested_branch)}}}"
+                            branch_dct[key][b_idx][
+                                n_idx] += f" {{{' '.join(Node(node).port for node in nested_branch)}}}"
 
         if len(branch_dct[source]) > 1:
             constraint = f"{Node(source).port}"
             for branch in branch_dct[source][1:]:
-                constraint += f" {{{' '.join(branch)}}}"
+                constraint += f" {{{' '.join(Node(node).port for node in branch)}}}"
 
-            constraint += f" {' '.join(branch_dct[source][0])}"
+            constraint += f" {' '.join(Node(node).port for node in branch_dct[source][0])}"
         else:
-            constraint = f"{Node(source).port} {' '.join(branch_dct[source][0])}"
+            constraint = f"{Node(source).port} {' '.join(Node(node).port for node in branch_dct[source][0])}"
 
         return f'{{{constraint}}}'
 
@@ -114,7 +115,8 @@ class CUT:
             trunk = nx.dag_longest_path(T)
             T.remove_edges_from(set(zip(trunk, trunk[1:])))
             T.remove_nodes_from({node for node in T if nx.is_isolate(T, node)})
-            ports_only = [Node(node).port for node in trunk]
+            # ports_only = [Node(node).port for node in trunk]
+            ports_only = trunk.copy()
             CUT.extend_dict(branch_dct, source, ports_only)
             fanout_nodes = [node for node in trunk if G_net.out_degree(node) > 1]
             if not fanout_nodes:

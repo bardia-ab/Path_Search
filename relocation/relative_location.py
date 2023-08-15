@@ -1,7 +1,9 @@
 from resources.cut import CUT
+from resources.node import Node
 from relocation.tile import Tile
 import networkx as nx
 import re, copy
+from itertools import product
 from Functions import extend_dict
 import Global_Module as GM
 class RLOC:
@@ -158,8 +160,8 @@ class RLOC:
 class DLOC():
 
     def __init__(self, device, TC, R_CUT, origin):
-        #self.LUTs_func_dict = {}
-        #self.FFs_set        = set()
+        self.not_LUT        = None
+        self.FFs_set        = set()
         self.origin         = origin
         self.index          = R_CUT.index
         self.G              = self.get_DLOC_G(device, TC, R_CUT)
@@ -172,28 +174,33 @@ class DLOC():
         G = nx.DiGraph()
 
         for node in R_CUT.G:
-            coordinate = self.get_DLOC_coord(self.get_tile(node), self.origin)
-            if coordinate not in device.tiles_map:
+            DLOC_node = self.get_DLOC_node(device, node)
+            if DLOC_node is None:
+                self.reason = 'invalid DLOC_node'
                 return None
 
-            if node.startswith('INT'):
-                tile = f'INT_{coordinate}'
-                port = self.get_port(node)
-            else:
-                direction = self.get_direction(node)
-                tile = device.tiles_map[coordinate][f'CLB_{direction}']
-                if not tile:
-                    return None
+            tile = self.get_tile(DLOC_node)
+            port = self.get_port(DLOC_node)
+            if tile in TC.used_nodes_dict:
+                if port in TC.used_nodes_dict[tile]:
+                    self.reason = 'Collision'
+                    return None     #Collision
 
-                port = f'CLE_CLE_{self.get_slice_type(tile)}_SITE_0_{self.get_port(node)}'
+            if re.match(GM.LUT_in_pattern, DLOC_node):
+                LUT_key = Node(DLOC_node).bel_key
+                N = 2 if DLOC_node[-1] == 6 else 1
+                if LUT_key in TC.LUTs:
+                    if (2 - len(TC.LUTs[LUT_key])) < N:
+                        self.reason = 'LUT over utelization'
+                        return None     #LUT over utelization
 
-            DLOC_node = f'{tile}/{port}'
             nodes_dict[node] = DLOC_node
 
         for edge in R_CUT.G.edges():
             DLOC_edge = (nodes_dict[edge[0]], nodes_dict[edge[1]])
             if self.is_wire(DLOC_edge):
                 if DLOC_edge not in device.wires_dict[self.get_tile(DLOC_edge[0])]:
+                    self.reason = 'wire heterogeneity'
                     return None
 
             label = R_CUT.G.get_edge_data(*edge)['path_type']
@@ -208,17 +215,16 @@ class DLOC():
                 neigh_type = 'O' if re.match(GM.CLB_out_pattern, neigh) else 'MUX'
             else:
                 neigh_type = None
+                self.not_LUT = (D_LUT_in.bel_key, D_LUT_in.name)
 
-            #self.LUTs_func_dict[D_LUT_in] = function
             extend_dict(TC.LUTs, D_LUT_in.bel_key, (D_LUT_in.name, function, neigh_type))
-            #LUT_primitive = TC.get_LUTs(name=D_LUT_in.bel_key).pop()
-            #LUT_primitive.set_LUT(D_LUT_in, function)
+
 
         for ff in R_CUT.FFs_set:
             D_ff = copy.deepcopy(ff)
             D_ff.name = nodes_dict[ff.name]
             extend_dict(TC.FFs, D_ff.bel_key, D_ff.name)
-            #self.FFs_set.add(D_ff)
+            self.FFs_set.add(D_ff.bel_key)
 
         return G
 
@@ -228,6 +234,79 @@ class DLOC():
         DLOC_coord = f'X{dx}Y{dy}'
 
         return DLOC_coord
+
+    def get_DLOC_node(self, device, R_node):
+        coordinate = self.get_DLOC_coord(self.get_tile(R_node), self.origin)
+        if coordinate not in device.tiles_map:
+            return None
+
+        if R_node.startswith('INT'):
+            tile = f'INT_{coordinate}'
+            port = self.get_port(R_node)
+        else:
+            direction = self.get_direction(R_node)
+            tile = device.tiles_map[coordinate][f'CLB_{direction}']
+            if not tile:
+                return None
+
+            port = f'CLE_CLE_{self.get_slice_type(tile)}_SITE_0_{self.get_port(R_node)}'
+
+        DLOC_node = f'{tile}/{port}'
+        return DLOC_node
+
+    @property
+    def RRG(self):
+        RRG = nx.DiGraph()
+        RRG.add_edges_from(self.G.edges())
+        wires_end = {edge[1] for edge in self.G.edges if CUT.get_tile(edge[0]) != CUT.get_tile(edge[1])}
+        for node in wires_end:
+            new_edges = product(self.G.predecessors(node), self.G.neighbors(node))
+            RRG.remove_node(node)
+            RRG.add_edges_from(new_edges)
+
+        return RRG
+
+    @property
+    def routing_constraint(self):
+        branch_dct = {}
+        self.get_branches(self.RRG, branch_dct)
+        source = [node for node in self.RRG if self.RRG.in_degree(node) == 0][0]
+        for key in branch_dct.keys().__reversed__():
+            for b_idx, lst in enumerate(branch_dct[key]):
+                for n_idx, node in enumerate(lst):
+                    if node in branch_dct:
+                        for nested_branch in branch_dct[node]:
+                            branch_dct[key][b_idx][n_idx] += f" {{{' '.join(Node(node).port for node in nested_branch)}}}"
+
+        if len(branch_dct[source]) > 1:
+            constraint = f"{Node(source).port}"
+            for branch in branch_dct[source][1:]:
+                constraint += f" {{{' '.join(Node(node).port for node in branch)}}}"
+
+            constraint += f" {' '.join(Node(node).port for node in branch_dct[source][0])}"
+        else:
+            constraint = f"{Node(source).port} {' '.join(Node(node).port for node in branch_dct[source][0])}"
+
+        return f'{{{constraint}}}'
+
+    @staticmethod
+    def get_branches(G_net, branch_dct={}):
+        source = [node for node in G_net if G_net.in_degree(node) == 0][0]
+        for neigh in G_net.neighbors(source):
+            T = nx.dfs_tree(G_net, neigh)
+            trunk = nx.dag_longest_path(T)
+            T.remove_edges_from(set(zip(trunk, trunk[1:])))
+            T.remove_nodes_from({node for node in T if nx.is_isolate(T, node)})
+            #ports_only = [Node(node).port for node in trunk]
+            ports_only = trunk.copy()
+            CUT.extend_dict(branch_dct, source, ports_only)
+            fanout_nodes = [node for node in trunk if G_net.out_degree(node) > 1]
+            if not fanout_nodes:
+                continue
+
+            for node in fanout_nodes:
+                G_net2 = nx.dfs_tree(T, node)
+                DLOC.get_branches(G_net2, branch_dct)
 
     @staticmethod
     def is_pip(edge):

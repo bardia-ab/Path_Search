@@ -76,7 +76,7 @@ class Arch:
 
         return FFs
 
-    def gen_LUTs(self, TC_total=None):
+    def gen_LUTs(self, TC, TC_total=None):
         blocked_LUTs = TC_total.blocked_LUTs if TC_total else set()
         LUTs = set()
         for clb in self.get_tiles(type='CLB'):
@@ -85,6 +85,14 @@ class Arch:
                 LUTs.add(f'{clb.name}/{chr(i)}6LUT')
 
         LUTs = {LUT(lut) for lut in LUTs if lut not in blocked_LUTs}
+        full_LUTs = set(filter(lambda x: re.match('CL.*5LUT', x), blocked_LUTs))
+        partial_LUTs = set(filter(lambda x: re.match('CL.*6LUT', x), blocked_LUTs))
+
+        full_LUTs_ins = {f'{self.get_tile(key)}/CLE_CLE_{self.get_slice_type(key)}_SITE_0_{self.get_port(key)[0]}{i}' for key in full_LUTs for i in range(1, 7)}
+        partial_LUTs_i6 = {f'{self.get_tile(key)}/CLE_CLE_{self.get_slice_type(key)}_SITE_0_{self.get_port(key)[0]}6'
+                         for key in partial_LUTs}
+        TC.block_nodes = full_LUTs_ins.union(partial_LUTs_i6)
+        TC.G.remove_nodes_from(full_LUTs_ins.union(partial_LUTs_i6))
 
         return LUTs
 

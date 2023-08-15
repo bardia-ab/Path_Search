@@ -16,10 +16,10 @@ class Configuration():
     def __init__(self, device, TC_total=None):
         self.G                      = copy.deepcopy(device.G)
         self.G_TC                   = nx.DiGraph()
-        self.FFs                    = device.gen_FFs(TC_total)
-        self.LUTs                   = device.gen_LUTs(TC_total)
         self._block_nodes           = set()
         self._block_edges           = set()
+        self.FFs                    = device.gen_FFs(TC_total)
+        self.LUTs                   = device.gen_LUTs(self, TC_total)
         self.CD                     = {'W_T': None, 'W_B': None, 'E_T': None, 'E_B': None}
         self.CUTs                   = []
         self.tried_pips             = set()
@@ -28,9 +28,9 @@ class Configuration():
         self.assign_source_sink()
         if TC_total:
             blocked_nodes = {f'{tile}/{port}' for tile, ports in TC_total.used_nodes_dict.items() for port in ports}
-            blocked_LUT_ins = set(filter(lambda x: re.match(GM.LUT_in_pattern, x), blocked_nodes))
-            blocked_i6 = {LUT_in[:-1] + '6' for LUT_in in blocked_LUT_ins}
-            blocked_nodes.update(blocked_i6)
+            #blocked_LUT_ins = set(filter(lambda x: re.match(GM.LUT_in_pattern, x), blocked_nodes))
+            #blocked_i6 = {LUT_in[:-1] + '6' for LUT_in in blocked_LUT_ins}
+            #blocked_nodes.update(blocked_i6)
             self.block_nodes = blocked_nodes
             self.G.remove_nodes_from(blocked_nodes)
             self.CD = TC_total.CD.copy()
