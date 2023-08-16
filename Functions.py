@@ -6,6 +6,17 @@ from heapq import heappop, heappush, heapify
 
 def extend_dict(dict_name, key, value, extend=False, value_type='list'):
     if value_type == 'set':
+        '''if extend:
+            if key not in dict_name:
+                dict_name[key] = {value}
+            else:
+                dict_name[key].update(value)
+        else:
+            if key not in dict_name:
+                dict_name[key] = {value}
+            else:
+                dict_name[key].add(value)'''
+
         if key not in dict_name:
             if isinstance(value, str) or isinstance(value, tuple):
                 dict_name[key] = {value}
@@ -141,6 +152,34 @@ def get_occupied_pips(pips_file):
     file.close()
 
     return pips
+
+def get_occupied_pips2(pips_file):
+    pips_dict = {}
+    i = 0
+    with open(pips_file) as lines:
+        for line in lines:
+            i += 1
+
+            if '<<->>' in line:
+                line = line.rstrip('\n').split('<<->>')
+                bidir = True
+            elif '->>' in line:
+                line = line.rstrip('\n').split('->>')
+                bidir = False
+            else:
+                line = line.rstrip('\n').split('->')
+                bidir = False
+
+            tile = get_tile(line[0])
+            start_port = get_port(line[0]).split('.')[1]
+            end_port = line[1]
+            extend_dict(pips_dict, tile, (start_port, end_port), value_type='set')
+            if bidir:
+                extend_dict(pips_dict, tile, (end_port, start_port), value_type='set')
+
+    print(i)
+    return pips_dict
+
 
 def get_graph(root, default_weight=0, xlim_down=None, xlim_up=None, ylim_down=None, ylim_up=None):
     G = nx.DiGraph()
@@ -364,7 +403,7 @@ def path_finder(G, source, target, weight="weight", conflict_free=True, delimite
     dists = [{}, {}]  # dictionary of final distances
     paths = [{source: [source]}, {target: [target]}]  # dictionary of paths
     fringe = [[], []]  # heap of (distance, node) for choosing node to expand
-    seen = [{source: 0}, {target: 0}]  # dict of distances to seen nodes
+    seen = [{source: 0}, {target: 0}]  # dict of distances to seen used_nodes
     c = count()
     # initialize fringe heap
     push(fringe[0], (0, next(c), source))
@@ -457,7 +496,7 @@ def weight_function(G, weight):
     function
         This function returns a callable that accepts exactly three subLUT_inputs:
         a node, an node adjacent to the first one, and the edge attribute
-        dictionary for the eedge joining those nodes. That function returns
+        dictionary for the eedge joining those used_nodes. That function returns
         a number representing the weight of an edge.
 
     If `G` is a multigraph, and `weight` is not callable, the

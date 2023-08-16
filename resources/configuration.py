@@ -191,7 +191,7 @@ class Configuration():
                 self.G.add_edge(*edge, weight=device.G.get_edge_data(*edge)['weight'])
 
     def block_path(self, device, path):
-        #nodes = [node for node in path if node.primitive != 'LUT']
+        #used_nodes = [node for node in path if node.primitive != 'LUT']
         self.block_nodes = path
         global_nodes = set()
         for node in path:
@@ -220,7 +220,7 @@ class Configuration():
 
         for edge in in_edges:
             if self.G.get_edge_data(*edge)['weight'] >= 1e4:
-                # as we extract the edges, some nodes count twice
+                # as we extract the edges, some used_nodes count twice
                 continue
 
             self.G.get_edge_data(*edge)['weight'] += 1e4
@@ -297,12 +297,12 @@ class Configuration():
 
     def remove_CUT(self, device):
         cut = self.CUTs[-1]
-        #self.unblock_nodes(device, cut.nodes)
+        #self.unblock_nodes(device, cut.used_nodes)
 
 #        global_nodes = set()
         for path in reversed(cut.paths):
             global_nodes = set()
-            self.unblock_nodes(device, path.nodes)
+            self.unblock_nodes(device, path.used_nodes)
             self.reset_CDs(device, path)
             for node in path:
                 '''if node.tile_type == 'INT':
@@ -354,15 +354,15 @@ class Configuration():
         main_path = self.CUTs[-1].main_path
         self.inc_cost(device, main_path, int_tile, 1/len(main_path), global_mode=True)
         self.remove_LUT_occupied_sources(device)
-        out_node_neighs = {node.name for node in cut.nodes if 'out_node' in self.G.predecessors(node.name)}
+        out_node_neighs = {node.name for node in cut.used_nodes if 'out_node' in self.G.predecessors(node.name)}
         edges = set(product({'out_node'}, out_node_neighs))
         self.G.remove_edges_from(edges)
 
     def block_CUT(self, device):
         for cut in self.CUTs:
-            nodes = {node.name for node in cut.nodes if node in device.G}
-            Source = list(filter(lambda x: x.clb_node_type == 'FF_out', cut.nodes))[0]
-            Sink = list(filter(lambda x: x.clb_node_type == 'FF_in', cut.nodes))[0]
+            nodes = {node.name for node in cut.used_nodes if node in device.G}
+            Source = list(filter(lambda x: x.clb_node_type == 'FF_out', cut.used_nodes))[0]
+            Sink = list(filter(lambda x: x.clb_node_type == 'FF_in', cut.used_nodes))[0]
 
             for source in device.get_nodes(bel_group=Source.bel_group, port_suffix=Source.port_suffix):
                 self.G.remove_edge('s', source.name)
@@ -988,8 +988,8 @@ class Configuration():
                 continue
 
             '''try:
-                nodes = {pip[0] for pip in self.G.in_edges(path_out[0].name) if pip not in queue}
-                temp_path_in = path_finder(self.G, 's', path_out[0].name, weight='weight', dummy_nodes=['s'], blocked_nodes=self.block_nodes.union(nodes) - {path_out[0].name})
+                used_nodes = {pip[0] for pip in self.G.in_edges(path_out[0].name) if pip not in queue}
+                temp_path_in = path_finder(self.G, 's', path_out[0].name, weight='weight', dummy_nodes=['s'], blocked_nodes=self.block_nodes.union(used_nodes) - {path_out[0].name})
             except:
                 self.G.remove_edge('out_node', path_out[0].name)
                 self.remove_CUT(dev)

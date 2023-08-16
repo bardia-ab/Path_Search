@@ -117,7 +117,7 @@ def get_CLB_FASM2(device, TC, path: Path, clk):
 
     return configurations
 
-def get_FFs_FASM(TC):
+def get_FFs_FASM(device, TC):
     configurations = set()
     FF_pins_dct = {
         'C': {'B': 'CTRL_{}4', 'T': 'CTRL_{}5'},
@@ -131,8 +131,7 @@ def get_FFs_FASM(TC):
         CE_key = 'CE2' if ff.index == 2 else 'CE'
         FFMUX = f'FFMUX{ff.letter}{ff.index}'
         tile = f'INT_{ff.coordinate}'
-        C = FF_pins_dct['C'][ff.bel_group[-1]].format(ff.bel_group[0])
-        C = f'{tile}/{C}'
+        C = f"{tile}/{FF_pins_dct['C'][ff.bel_group[-1]].format(ff.bel_group[0])}"
         SR = FF_pins_dct['SR'][ff.bel_group[-1]].format(ff.bel_group[0])
         CE = FF_pins_dct[CE_key][ff.bel_group[-1]].format(ff.bel_group[0])
 
@@ -144,6 +143,11 @@ def get_FFs_FASM(TC):
 
         configurations.add(f'{tile}.PIP.{SR}.VCC_WIRE = {{}}\n')
         configurations.add(f'{tile}.PIP.{CE}.VCC_WIRE = {{}}\n')
+
+        '''G = device.get_tile_graph(tile)
+        clk_path = nx.shortest_path(G, clk_pin, C)
+        pips = {Edge(edge) for edge in zip(clk_path, clk_path[1:]) if Edge.is_pip(edge)}
+        configurations.update(get_pip_FASM(*pips))'''
 
     return configurations
 def get_LUTs_FASM(LUTs):

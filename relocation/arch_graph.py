@@ -1,3 +1,5 @@
+import networkx as nx
+
 from Functions import load_data
 from relocation.tile import Tile
 from resources.primitive import LUT, LUT6_2
@@ -11,6 +13,7 @@ class Arch:
         self.tiles_map  = self.get_tiles_coord_dict()
         self.INTs       = self.get_INTs()
         self.CLBs       = self.get_CLBs()
+        self.pips       = load_data(GM.load_path, 'pips.data')
         #self.LUTs       = self.gen_LUTs()
 
     def get_INTs(self):
@@ -108,23 +111,6 @@ class Arch:
         return limited_tiles
 
     def remove_covered_INTs(self):
-        '''full_INTs = set()
-        for i in range(1, l):
-            file = os.listdir(os.path.join(GM.store_path, f'iter{i}'))[0]
-            coordinate = load_data(os.path.join(GM.store_path, f'iter{i}'), file).CUTs[0].origin
-            pattern = {k: 1 if v else 0 for k, v in self.tiles_map[coordinate].items()}
-            coords = []
-            for INT in INTs:
-                coord = INT.coordinate
-                p1 = {k: 1 if v else 0 for k, v in self.tiles_map[coord].items()}
-                if p1 == pattern:
-                    coords.append(coord)
-            for coord in coords:
-                if f'INT_{coord}' in covered_pips_dict:
-                    if covered_pips_dict[f'INT_{coordinate}'] == covered_pips_dict[f'INT_{coord}']:
-                        full_INTs.add(coord)
-
-        INTs = [INT for INT in INTs if INT.coordinate not in full_INTs]'''
         remaining_pips_dict = self.get_remaining_pips_dict()
         return [INT for INT in self.INTs if INT.name in remaining_pips_dict]
 
@@ -143,6 +129,20 @@ class Arch:
         remaining_pips = {k: remaining_pips[k] for k in keys}
 
         return remaining_pips
+
+    def get_pips(self, INT):
+        pips = set()
+        for pip in self.pips:
+            u, v = f'{INT}/{pip[0]}', f'{INT}/{pip[1]}'
+            pips.add((u, v))
+
+        return pips
+
+    def get_tile_graph(self, tile):
+        G = nx.DiGraph()
+        G.add_edges_from(self.get_pips(tile))
+
+        return G
 
     @staticmethod
     def get_x_coord(tile):
