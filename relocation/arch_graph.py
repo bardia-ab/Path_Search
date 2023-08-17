@@ -152,6 +152,9 @@ class Arch:
         #clk_path_pips= set(nx.dfs_edges(G, clk_pin))
         G_tiles = {get_tile(node) for node in G}
         for tile in G_tiles:
+            if tile not in self.used_nodes_dict:
+                continue
+
             used_nodes.update({f'{tile}/{node}' for node in self.used_nodes_dict[tile]})
             used_pips.update({(f'{tile}/{pip[0]}', f'{tile}/{pip[1]}') for pip in self.used_pips_dict[tile]})
 
@@ -205,19 +208,20 @@ class Arch:
         for tile, nodes in clk_nodes_dict.items():
             clk_pins = set(filter(lambda x: re.match('.*GCLK.*', x), nodes))
             if clk_pins:
-                clk_pins_dict[tile] = list(clk_pins)
+                clk_pins_dict[tile] = next(iter(clk_pins))
 
         CR_clk_pins_dict = {}
         for tile, pin in clk_pins_dict.items():
             cr, half = self.get_tile_half(tile)
-            cr = cr.name
-            if cr not in CR_clk_pins_dict:
+            x = self.get_x_coord(tile)
+            extend_dict(CR_clk_pins_dict, (cr.name, half, x), pin, value_type='set')
+            '''if cr not in CR_clk_pins_dict:
                 CR_clk_pins_dict[cr] = {half: set(pin)}
             else:
                 if half not in CR_clk_pins_dict[cr]:
                     CR_clk_pins_dict[cr].update({half: set(pin)})
                 else:
-                    CR_clk_pins_dict[cr][half].update(pin)
+                    CR_clk_pins_dict[cr][half].update(pin)'''
 
         if clk_name == 'launch':
             self.CR_l_clk_pins_dict = CR_clk_pins_dict.copy()

@@ -1,6 +1,7 @@
-import re
-
+import re, os
+from Functions import load_data
 import networkx as nx
+from joblib import Parallel, delayed
 
 from resources.edge import Edge
 from resources.path import Path
@@ -133,6 +134,7 @@ def get_FFs_FASM(device, TC):
 
     for (cr, tile, half), ffs in FFs_dict.items():
         G = device.get_tile_graph(tile)
+        x = device.get_x_coord(tile)
         for ff in ffs:
             ff =Node(ff)
             CE_key = 'CE2' if ff.index == 2 else 'CE'
@@ -152,9 +154,17 @@ def get_FFs_FASM(device, TC):
             configurations.add(f'{tile}.PIP.{CE}.VCC_WIRE = {{}}\n')
 
             if ff.clb_node_type == 'FF_out':
-                clk_pin = f'{tile}/{next(iter(device.CR_l_clk_pins_dict[cr][half]))}'
+                if (cr, half, x) not in device.CR_l_clk_pins_dict:
+                    extend_dict(device.dummy, 'launch', (cr, half, x))
+                    continue
+
+                clk_pin = f'{tile}/{next(iter(device.CR_l_clk_pins_dict[(cr, half, x)]))}'
             if ff.clb_node_type == 'FF_in':
-                clk_pin = f'{tile}/{next(iter(device.CR_s_clk_pins_dict[cr][half]))}'
+                if (cr, half, x) not in device.CR_s_clk_pins_dict:
+                    extend_dict(device.dummy, 'sample', (cr, half, x))
+                    continue
+
+                clk_pin = f'{tile}/{next(iter(device.CR_s_clk_pins_dict[(cr, half, x)]))}'
 
             clk_path = nx.shortest_path(G, clk_pin, C)
             pips = {Edge(edge) for edge in zip(clk_path, clk_path[1:]) if Edge.is_pip(edge)}
@@ -244,26 +254,45 @@ def get_FFMUX_FASM(tile, bel, FF_index, FFMUX_pin):
     return f'{tile}.FFMUX{bel}{FF_index}.{FFMUX_pin} = {{}}\n'
 
 
-def get_D_CUT_cells(TC, slices_dict, D_CUT):
-    cells = {}
-    launch_FF_key = {key for key in D_CUT.FFs_set if re.match(GM.FF_out_pattern, TC.FFs[key][0])}.pop()
-    slice = slices_dict[get_tile(launch_FF_key)]
-    bel = get_port(launch_FF_key)
-    cells['launch_FF'] = (slice, bel)
-    sample_FF_key = {key for key in D_CUT.FFs_set if re.match(GM.FF_in_pattern, TC.FFs[key][0])}.pop()
-    slice = slices_dict[get_tile(sample_FF_key)]
-    bel = get_port(sample_FF_key)
-    cells['sample_FF'] = (slice, bel)
-    not_LUT_key = D_CUT.not_LUT[0]
-    slice = slices_dict[get_tile(not_LUT_key)]
-    subLUT = [lut for lut in TC.LUTs[not_LUT_key] if (D_CUT.not_LUT[1] == lut[0]) and (lut[1] == 'not')].pop()
-    idx = 6 - TC.LUTs[not_LUT_key].index(subLUT)
-    input = subLUT[0]
-    bel = f'{get_port(not_LUT_key)[0]}{idx}LUT'
-    cells['not_LUT'] = (slice, bel, input)
 
-    return cells
+def count_D_CUTs(path, file):
+    TC = load_data(path, file)
+    D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs]
 
+    return len(D_CUTs)
+
+def get_Init_TC(path):
+    files = [file for file in os.listdir(path) if file.startswith('TC')]
+    files = sorted(files, key=lambda x: int(re.findall('\d+', x).pop()), reverse=False)
+    len_D_CUTs = Parallel(n_jobs=-1)(delayed(count_D_CUTs)(path, file) for file in files)
+
+    max_idx = len_D_CUTs.index(max(len_D_CUTs))
+    Init_TC = files[max_idx]
+    files.remove(Init_TC)
+
+    return files, Init_TC
+def get_occupied_pips(pips_file):
+    used_pips  = set()
+    with open(pips_file) as lines:
+        for line in lines:
+            if '<<->>' in line:
+                line = line.rstrip('\n').split('<<->>')
+                bidir = True
+            elif '->>' in line:
+                line = line.rstrip('\n').split('->>')
+                bidir = False
+            else:
+                line = line.rstrip('\n').split('->')
+                bidir = False
+
+            tile = get_tile(line[0])
+            start_port = f'{tile}/{get_port(line[0]).split(".")[1]}'
+            end_port = f'{tile}/{line[1]}'
+            used_pips.add((start_port, end_port))
+            if bidir:
+                used_pips.add((end_port, start_port))
+
+    return used_pips
 
 
 class Cell:
@@ -308,3 +337,24 @@ class Cell:
                 constraints.append(cell.get_LOCK_PINS())
 
         return constraints
+
+    @staticmethod
+    def get_D_CUT_cells(TC, slices_dict, D_CUT):
+        cells = {}
+        launch_FF_key = {key for key in D_CUT.FFs_set if re.match(GM.FF_out_pattern, TC.FFs[key][0])}.pop()
+        slice = slices_dict[get_tile(launch_FF_key)]
+        bel = get_port(launch_FF_key)
+        cells['launch_FF'] = (slice, bel)
+        sample_FF_key = {key for key in D_CUT.FFs_set if re.match(GM.FF_in_pattern, TC.FFs[key][0])}.pop()
+        slice = slices_dict[get_tile(sample_FF_key)]
+        bel = get_port(sample_FF_key)
+        cells['sample_FF'] = (slice, bel)
+        not_LUT_key = D_CUT.not_LUT[0]
+        slice = slices_dict[get_tile(not_LUT_key)]
+        subLUT = [lut for lut in TC.LUTs[not_LUT_key] if (D_CUT.not_LUT[1] == lut[0]) and (lut[1] == 'not')].pop()
+        idx = 6 - TC.LUTs[not_LUT_key].index(subLUT)
+        input = subLUT[0]
+        bel = f'{get_port(not_LUT_key)[0]}{idx}LUT'
+        cells['not_LUT'] = (slice, bel, input)
+
+        return cells

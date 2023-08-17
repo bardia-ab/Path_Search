@@ -16,14 +16,13 @@ N_Parallel = 50
 name_prefix = 'design_1_i/top_0/U0/Inst/Multiple_Segments[{}].{}.Multiple_CUT[{}].CUT/{}'
 slices_dict = load_data(GM.load_path, 'clb_site_dict2.data')
 
-GM.DLOC_path = os.path.join(GM.DLOC_path, 'iter7')
-file = 'TC0.data'
-TC = load_data(GM.DLOC_path, file)
+TCs_path = os.path.join(GM.DLOC_path, 'iter16')
+files, Init_TC_file = const.get_Init_TC(TCs_path)
+Init_TC = load_data(TCs_path, Init_TC_file)
+a = {lut:Init_TC.LUTs[lut] for lut in Init_TC.LUTs if len(Init_TC.LUTs[lut])>2}
+#b = {ff:Init_TC.FFs[ff] for ff in Init_TC.FFs if len(Init_TC.FFs[ff])>2}
 
-a = {lut:TC.LUTs[lut] for lut in TC.LUTs if len(TC.LUTs[lut])>2}
-#b = {ff:TC.FFs[ff] for ff in TC.FFs if len(TC.FFs[ff])>2}
-
-D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs]
+D_CUTs = [D_CUT for R_CUT in Init_TC.CUTs for D_CUT in R_CUT.D_CUTs]
 D_CUTs.sort(key=lambda x: x.index)
 N_Segments = math.ceil(len(D_CUTs) / N_Parallel)
 N_Partial = len(D_CUTs) % N_Parallel
@@ -46,7 +45,7 @@ for idx, D_CUT in enumerate(D_CUTs):
     launch_net = name_prefix.format(Seg_idx, segment_type, CUT_idx, 'Q_launch_int')
 
 
-    D_CUT_cells = const.get_D_CUT_cells(TC, slices_dict, D_CUT)
+    D_CUT_cells = Cell.get_D_CUT_cells(Init_TC, slices_dict, D_CUT)
     launch_FF = Cell('FF', D_CUT_cells['launch_FF'][0], D_CUT_cells['launch_FF'][1], launch_FF_cell_name)
     sample_FF = Cell('FF', D_CUT_cells['sample_FF'][0], D_CUT_cells['sample_FF'][1], sample_FF_cell_name)
     not_LUT   = Cell('LUT', D_CUT_cells['not_LUT'][0], D_CUT_cells['not_LUT'][1], not_LUT_cell_name)
