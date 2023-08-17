@@ -30,7 +30,7 @@ class Arch:
             if tile.type == 'CLB':
                 self.tile_dirc_dict[tile.name] = tile.direction
 
-            for node in tile.used_nodes:
+            for node in tile.nodes:
                 if node.tile_type == 'INT':
                     key = node.port
                     value = node.tile
@@ -109,7 +109,7 @@ class Arch:
         return tiles
 
     def get_nodes(self, **attributes):
-        all_nodes = {node for tile in self.tiles for node in tile.used_nodes}
+        all_nodes = {node for tile in self.tiles for node in tile.nodes}
         for k, v in attributes.items():
             nodes = set()
             for node in all_nodes:
@@ -160,7 +160,7 @@ class Arch:
         queue = list(self.get_nodes(tile_type='INT', mode='in', coordinate=coord))
         next_queue = set()
         level = 0
-        while len(node_level) != len(int_tile.used_nodes):
+        while len(node_level) != len(int_tile.nodes):
             level += 1
             neighs = set()
             for node in queue:
@@ -179,13 +179,13 @@ class Arch:
             queue = list(next_queue).copy()
             next_queue = set()
 
-        for node in int_tile.used_nodes:
+        for node in int_tile.nodes:
             node.level = node_level[node.name]
 
         return mid_back
 
     def get_clb_nodes(self, type):
-        all_nodes = {node for tile in self.tiles for node in tile.used_nodes}
+        all_nodes = {node for tile in self.tiles for node in tile.nodes}
         if type == 'LUT_in':
             return set(filter(lambda x: re.match(GM.LUT_in_pattern, x.name), all_nodes))
         elif type == 'FF_in':
@@ -286,5 +286,5 @@ class Arch:
             self.G.get_edge_data(*edge)['weight'] = weight
 
     def blocking_nodes(self, tile):
-        #these are out mode used_nodes that have pips back to the INT tile
+        #these are out mode nodes that have pips back to the INT tile
         return {node.name for node in self.get_nodes(tile=tile, mode='out') if self.G.out_degree(node.name)>1}

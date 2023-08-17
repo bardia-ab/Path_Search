@@ -9,7 +9,7 @@ l_prev = len(remainig_pips_dict)
 while remainig_pips_dict:
     coords = list(remainig_pips_dict.keys())
     coord = coords[0].split('_')[1]
-    commands = [f'python Compressed_Graph.py {coord}', f'python temp.py {coord}', f'python Relocate_CUTs.py {coord}']
+    commands = [f'python3 Compressed_Graph.py {coord}', f'python3 temp.py {coord}', f'python3 Relocate_CUTs.py {coord}']
     for command in commands:
         pbar.set_description(command)
         os.system(command)

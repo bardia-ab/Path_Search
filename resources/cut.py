@@ -34,9 +34,9 @@ class CUT:
     def not_path(self):
         src = {node for node in self.G if self.G.in_degree(node) == 0}.pop()
         path = nx.shortest_path(self.G, src, self.paths[-1][-1].name)
-        #used_nodes = [node for node in self.used_nodes if node.name in path]
-        #used_nodes.sort(key=lambda x: path.index(x.name))
-        #not_path = Path(used_nodes=path, path_type='not')
+        #nodes = [node for node in self.nodes if node.name in path]
+        #nodes.sort(key=lambda x: path.index(x.name))
+        #not_path = Path(nodes=path, path_type='not')
 
         return path
 
@@ -44,7 +44,7 @@ class CUT:
     def nodes(self):
         nodes = set()
         for path in self.paths:
-            nodes.update(path.used_nodes)
+            nodes.update(path.nodes)
 
         return nodes
 

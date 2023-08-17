@@ -6,7 +6,7 @@ from Functions import get_tile, get_port
 class Path:
 
     def __init__(self, device=None, TC=None, nodes=None, path_type=None):
-        # as used_nodes are extracted from device, extra used_nodes like s and t are removed
+        # as nodes are extracted from device, extra nodes like s and t are removed
         self.path_type  = path_type
         if device:
             self.nodes      = self.add_nodes(device, nodes)
@@ -32,7 +32,7 @@ class Path:
 
     def __add__(self, obj2):
         path = Path()
-        path.nodes = self.nodes + obj2.used_nodes
+        path.nodes = self.nodes + obj2.nodes
         path.edges = self.edges.union(obj2.edges)
         path.path_type = self.path_type
 
@@ -88,10 +88,10 @@ class Path:
         FFs_set = {node for node in self.nodes if node.primitive == 'FF'}
 
         '''if GM.block_mode == 'local':
-            for node in filter(lambda x: x.primitive=='FF', self.used_nodes):
+            for node in filter(lambda x: x.primitive=='FF', self.nodes):
                 FFs_set.update(device.get_nodes(name=node.name))
         else:
-            for node in filter(lambda x: x.primitive=='FF', self.used_nodes):
+            for node in filter(lambda x: x.primitive=='FF', self.nodes):
                 FFs_set.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))'''
 
         return FFs_set

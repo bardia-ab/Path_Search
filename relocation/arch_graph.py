@@ -1,8 +1,9 @@
 import networkx as nx
 
-from Functions import load_data
+from Functions import load_data, get_tile, get_port, extend_dict
 from relocation.tile import Tile
 from resources.primitive import LUT, LUT6_2
+from relocation.clock_region import CR
 import Global_Module as GM
 import re, os
 class Arch:
@@ -14,6 +15,7 @@ class Arch:
         self.INTs       = self.get_INTs()
         self.CLBs       = self.get_CLBs()
         self.pips       = load_data(GM.load_path, 'pips.data')
+        self.CRs        = CR.init_CRs(os.path.join(GM.load_path, 'HCS.txt'))
         #self.LUTs       = self.gen_LUTs()
 
     def get_INTs(self):
@@ -141,8 +143,106 @@ class Arch:
     def get_tile_graph(self, tile):
         G = nx.DiGraph()
         G.add_edges_from(self.get_pips(tile))
+        G = self.block_graph(G)
+        return G
+
+    def block_graph(self, G):
+        used_pips = set()
+        used_nodes = set()
+        #clk_path_pips= set(nx.dfs_edges(G, clk_pin))
+        G_tiles = {get_tile(node) for node in G}
+        for tile in G_tiles:
+            used_nodes.update({f'{tile}/{node}' for node in self.used_nodes_dict[tile]})
+            used_pips.update({(f'{tile}/{pip[0]}', f'{tile}/{pip[1]}') for pip in self.used_pips_dict[tile]})
+
+
+        in_edges = set()
+        for node in used_nodes:
+            in_edges.update(G.in_edges(node))
+
+        #in_edges = in_edges - clk_path_pips
+        in_edges = in_edges - used_pips
+        G.remove_edges_from(in_edges)
 
         return G
+
+    @staticmethod
+    def get_occupied_pips(pips_file):
+        used_pips_dict  = {}
+        with open(pips_file) as lines:
+            for line in lines:
+                if '<<->>' in line:
+                    line = line.rstrip('\n').split('<<->>')
+                    bidir = True
+                elif '->>' in line:
+                    line = line.rstrip('\n').split('->>')
+                    bidir = False
+                else:
+                    line = line.rstrip('\n').split('->')
+                    bidir = False
+
+                tile = get_tile(line[0])
+                start_port = get_port(line[0]).split('.')[1]
+                end_port = line[1]
+                extend_dict(used_pips_dict , tile, (start_port, end_port), value_type='set')
+                if bidir:
+                    extend_dict(used_pips_dict , tile, (end_port, start_port), value_type='set')
+
+        return used_pips_dict
+
+    def set_used_pips_nodes_dict(self, pips_file):
+        self.used_pips_dict = self.get_occupied_pips(pips_file)
+        self.used_nodes_dict = {}
+        for key in self.used_pips_dict:
+            self.used_nodes_dict[key] = {node for pip in self.used_pips_dict[key] for node in pip}
+    def set_clk_dicts(self, file, clk_name):
+        clk_pips_dict = self.get_occupied_pips(file)
+        clk_nodes_dict = {}
+        for tile in clk_pips_dict:
+            clk_nodes_dict[tile] = {node for pip in clk_pips_dict[tile] for node in pip}
+
+        clk_pins_dict = {}
+        for tile, nodes in clk_nodes_dict.items():
+            clk_pins = set(filter(lambda x: re.match('.*GCLK.*', x), nodes))
+            if clk_pins:
+                clk_pins_dict[tile] = list(clk_pins)
+
+        CR_clk_pins_dict = {}
+        for tile, pin in clk_pins_dict.items():
+            cr, half = self.get_tile_half(tile)
+            cr = cr.name
+            if cr not in CR_clk_pins_dict:
+                CR_clk_pins_dict[cr] = {half: set(pin)}
+            else:
+                if half not in CR_clk_pins_dict[cr]:
+                    CR_clk_pins_dict[cr].update({half: set(pin)})
+                else:
+                    CR_clk_pins_dict[cr][half].update(pin)
+
+        if clk_name == 'launch':
+            self.CR_l_clk_pins_dict = CR_clk_pins_dict.copy()
+
+        if clk_name == 'sample':
+            self.CR_s_clk_pins_dict = CR_clk_pins_dict.copy()
+
+    def get_CRs(self, **attributes):
+        CRs = set()
+        for tile in self.CRs:
+            for attr in attributes:
+                if getattr(tile, attr) != attributes[attr]:
+                    break
+            else:
+                CRs.add(tile)
+
+
+        return CRs
+
+    def get_tile_half(self, tile):
+        x, y = self.get_x_coord(tile), self.get_y_coord(tile)
+        for cr in {cr for cr in self.CRs if cr.HCS_Y_coord}:
+            if (cr.x_min <= x <= cr.x_max) and (cr.y_min <= y <= cr.y_max):
+                half = 'T' if y > cr.HCS_Y_coord else 'B'
+                return cr, half
 
     @staticmethod
     def get_x_coord(tile):

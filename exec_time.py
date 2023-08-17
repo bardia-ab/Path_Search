@@ -23,7 +23,7 @@ def Init_tile_node_dicts(dev:Arch):
         if tile.type == 'CLB':
             dev.tile_dirc_dict[tile.name] = tile.direction
 
-        for node in tile.used_nodes:
+        for node in tile.nodes:
             if node.tile_type == 'INT':
                 key = node.port
                 value = node.tile

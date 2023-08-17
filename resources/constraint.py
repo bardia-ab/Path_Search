@@ -125,29 +125,40 @@ def get_FFs_FASM(device, TC):
         'CE': {'B': 'CTRL_{}0', 'T': 'CTRL_{}2'},
         'CE2': {'B': 'CTRL_{}1', 'T': 'CTRL_{}3'}
     }
+    FFs_dict = {}
+    for key, value in TC.FFs.items():
+        tile = f'INT_{get_tile(key).split("_")[-1]}'
+        cr, half = device.get_tile_half(tile)
+        extend_dict(FFs_dict, (cr.name, tile, half), value[0])
 
-    for ff in TC.FFs:
-        ff =FF(ff)
-        CE_key = 'CE2' if ff.index == 2 else 'CE'
-        FFMUX = f'FFMUX{ff.letter}{ff.index}'
-        tile = f'INT_{ff.coordinate}'
-        C = f"{tile}/{FF_pins_dct['C'][ff.bel_group[-1]].format(ff.bel_group[0])}"
-        SR = FF_pins_dct['SR'][ff.bel_group[-1]].format(ff.bel_group[0])
-        CE = FF_pins_dct[CE_key][ff.bel_group[-1]].format(ff.bel_group[0])
+    for (cr, tile, half), ffs in FFs_dict.items():
+        G = device.get_tile_graph(tile)
+        for ff in ffs:
+            ff =Node(ff)
+            CE_key = 'CE2' if ff.index == 2 else 'CE'
+            FFMUX = f'FFMUX{ff.bel}{ff.index}'
+            #tile = f'INT_{ff.coordinate}'
+            C = f"{tile}/{FF_pins_dct['C'][ff.bel_group[-1]].format(ff.bel_group[0])}"
+            SR = FF_pins_dct['SR'][ff.bel_group[-1]].format(ff.bel_group[0])
+            CE = FF_pins_dct[CE_key][ff.bel_group[-1]].format(ff.bel_group[0])
 
-        if re.match(GM.FF_in_pattern, TC.FFs[ff.name][0]):
-            FFMUX_pin = 'BYP'
-            configurations.add(f'{ff.tile}.{FFMUX}.{FFMUX_pin} = {{}}\n')
-        else:
-            configurations.update(get_not_FF_configuration(TC, ff.tile, ff.letter, ff.index))
+            if ff.clb_node_type == 'FF_in':
+                FFMUX_pin = 'BYP'
+                configurations.add(f'{ff.tile}.{FFMUX}.{FFMUX_pin} = {{}}\n')
+            else:
+                configurations.update(get_not_FF_configuration(TC, ff.tile, ff.bel, ff.index))
 
-        configurations.add(f'{tile}.PIP.{SR}.VCC_WIRE = {{}}\n')
-        configurations.add(f'{tile}.PIP.{CE}.VCC_WIRE = {{}}\n')
+            configurations.add(f'{tile}.PIP.{SR}.VCC_WIRE = {{}}\n')
+            configurations.add(f'{tile}.PIP.{CE}.VCC_WIRE = {{}}\n')
 
-        '''G = device.get_tile_graph(tile)
-        clk_path = nx.shortest_path(G, clk_pin, C)
-        pips = {Edge(edge) for edge in zip(clk_path, clk_path[1:]) if Edge.is_pip(edge)}
-        configurations.update(get_pip_FASM(*pips))'''
+            if ff.clb_node_type == 'FF_out':
+                clk_pin = f'{tile}/{next(iter(device.CR_l_clk_pins_dict[cr][half]))}'
+            if ff.clb_node_type == 'FF_in':
+                clk_pin = f'{tile}/{next(iter(device.CR_s_clk_pins_dict[cr][half]))}'
+
+            clk_path = nx.shortest_path(G, clk_pin, C)
+            pips = {Edge(edge) for edge in zip(clk_path, clk_path[1:]) if Edge.is_pip(edge)}
+            configurations.update(get_pip_FASM(*pips))
 
     return configurations
 def get_LUTs_FASM(LUTs):

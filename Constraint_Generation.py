@@ -16,11 +16,11 @@ N_Parallel = 50
 name_prefix = 'design_1_i/top_0/U0/Inst/Multiple_Segments[{}].{}.Multiple_CUT[{}].CUT/{}'
 slices_dict = load_data(GM.load_path, 'clb_site_dict2.data')
 
-GM.DLOC_path = os.path.join(GM.DLOC_path, 'iter1')
+GM.DLOC_path = os.path.join(GM.DLOC_path, 'iter7')
 file = 'TC0.data'
 TC = load_data(GM.DLOC_path, file)
 
-#a = {lut:TC.LUTs[lut] for lut in TC.LUTs if len(TC.LUTs[lut])>2}
+a = {lut:TC.LUTs[lut] for lut in TC.LUTs if len(TC.LUTs[lut])>2}
 #b = {ff:TC.FFs[ff] for ff in TC.FFs if len(TC.FFs[ff])>2}
 
 D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs]
