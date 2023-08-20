@@ -86,3 +86,6 @@ FF_key_pattern = re.compile('^CLE.*/[A-H]FF2*$')
 LUT_key_pattern = re.compile('^CLE.*/[A-H]LUT$')
 top_group = re.compile('^CLE.*_[E-H].*')
 bottom_group = re.compile('^CLE.*_[A-D].*')
+
+src_tiles = set()
+sink_tiles = set()

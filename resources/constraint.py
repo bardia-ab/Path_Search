@@ -23,6 +23,9 @@ def get_direction(clb_node):
 
     return dir
 
+def get_coordinate(tile):
+    return re.findall('X-*\d+Y-*\d+', tile)[0]
+
 def get_pip_FASM(*pips, mode=None):
     value = {'set': 1, 'clear': 0, None:'{}'}
     exception = [
@@ -186,6 +189,7 @@ def get_LUTs_FASM(LUTs):
     configurations = set()
     for LUT, subLUTs in LUTs.items():
         tile = get_tile(LUT)
+        INT_tile = f'INT_{get_coordinate(tile)}'
         bel = get_port(LUT)[0]
 
         if len(LUTs[LUT]) == 1:    #6LUT
@@ -213,7 +217,7 @@ def get_LUTs_FASM(LUTs):
 
         INIT_conf = f'{tile}.{bel}LUT.INIT[63:0] = {INIT}'
         i6_port = i6_dct[bel].format(get_direction(LUT))
-        configurations.add(f'{tile}.PIP.{i6_port}.VCC_WIRE = {{}}\n')
+        configurations.add(f'{INT_tile}.PIP.{i6_port}.VCC_WIRE = {{}}\n')
         configurations.add(INIT_conf)
 
     return configurations
@@ -261,6 +265,12 @@ def count_D_CUTs(path, file):
 
     return len(D_CUTs)
 
+def get_src_sink_tiles(path, file, pattern):
+    TC = load_data(path, file)
+    tiles = {f'INT_{get_coordinate(get_tile(ff[0]))}' for key, ff in TC.FFs.items() if re.match(pattern, ff[0])}
+
+    return tiles
+
 def get_Init_TC(path):
     files = [file for file in os.listdir(path) if file.startswith('TC')]
     files = sorted(files, key=lambda x: int(re.findall('\d+', x).pop()), reverse=False)
@@ -294,6 +304,106 @@ def get_occupied_pips(pips_file):
 
     return used_pips
 
+
+def get_Init_used_pips_nodes_dict(device, TCs_path, Init_TC_file):
+    Init_dynamic_pips = set()
+    Init_TC = load_data(TCs_path, Init_TC_file)
+    srcs = {ff[0] for key, ff in Init_TC.FFs.items() if re.match(GM.FF_out_pattern, ff[0])}
+    TC_G = nx.DiGraph()
+    '''for R_CUT in Init_TC.CUTs:
+        for D_CUT in R_CUT.D_CUTs:
+            srcs.update(node for node in D_CUT.G if D_CUT.G.in_degree(node) == 0)
+            TC_G = nx.compose(TC_G, D_CUT.G)'''
+            #Init_dynamic_pips.update(edge for edge in D_CUT.G.edges() if Edge.is_pip(edge))
+    TC_G.add_edges_from(edge for R_CUT in Init_TC.CUTs for D_CUT in R_CUT.D_CUTs for edge in D_CUT.G.edges())
+
+    for src in srcs:
+        Init_dynamic_pips.update(nx.dfs_edges(TC_G, src))
+
+    interface_paths = os.path.join(GM.load_path, 'nets')
+    net_files = {f'{interface_paths}/{file}' for file in os.listdir(interface_paths)}
+    interface_pips = Parallel(n_jobs=-1)(delayed(get_occupied_pips)(file) for file in net_files)
+    Init_dynamic_pips.update(pip for pips in interface_pips for pip in pips)
+
+    Init_dynamic_pips.update(get_VCC_i6_pips(Init_TC.LUTs))
+    Init_dynamic_pips.update(get_FFs_CTRL_pips(device, Init_TC.FFs))
+
+
+    Init_used_pips_dict = {}
+    Init_used_nodes_dict = {}
+    for pip in Init_dynamic_pips:
+        tile = get_tile(pip[0])
+        pip = (get_port(pip[0]), get_port(pip[1]))
+        extend_dict(Init_used_pips_dict, tile, pip, value_type='set')
+
+    for key in Init_used_pips_dict:
+        Init_used_nodes_dict[key] = {node for pip in Init_used_pips_dict[key] for node in pip}
+
+
+    return Init_used_pips_dict, Init_used_nodes_dict
+
+def get_VCC_i6_pips(LUTs):
+    i6_dct = {
+        'A': 'IMUX_{}18',
+        'B': 'IMUX_{}19',
+        'C': 'IMUX_{}20',
+        'D': 'IMUX_{}21',
+        'E': 'IMUX_{}34',
+        'F': 'IMUX_{}35',
+        'G': 'IMUX_{}46',
+        'H': 'IMUX_{}47'
+    }
+
+    pips = set()
+    for LUT in LUTs:
+        tile = get_tile(LUT)
+        INT_tile = f'INT_{get_coordinate(tile)}'
+        bel = get_port(LUT)[0]
+        i6_port = f'{INT_tile}/{i6_dct[bel].format(get_direction(LUT))}'
+        VCC_Wire = f'{INT_tile}/VCC_WIRE'
+        pips.add((VCC_Wire, i6_port))
+
+    return pips
+
+def get_FFs_CTRL_pips(device, FFs):
+    pips = set()
+    FF_pins_dct = {
+        'C': {'B': 'CTRL_{}4', 'T': 'CTRL_{}5'},
+        'SR': {'B': 'CTRL_{}6', 'T': 'CTRL_{}7'},
+        'CE': {'B': 'CTRL_{}0', 'T': 'CTRL_{}2'},
+        'CE2': {'B': 'CTRL_{}1', 'T': 'CTRL_{}3'}
+    }
+    FFs_dict = {}
+    for key, value in FFs.items():
+        tile = f'INT_{get_tile(key).split("_")[-1]}'
+        cr, half = device.get_tile_half(tile)
+        extend_dict(FFs_dict, (cr.name, tile, half), value[0])
+
+    for (cr, tile, half), ffs in FFs_dict.items():
+        G = device.get_tile_graph(tile, block=False)
+        x = device.get_x_coord(tile)
+        for ff in ffs:
+            ff = Node(ff)
+            CE_key = 'CE2' if ff.index == 2 else 'CE'
+            C = f"{tile}/{FF_pins_dct['C'][ff.bel_group[-1]].format(ff.bel_group[0])}"
+            SR = FF_pins_dct['SR'][ff.bel_group[-1]].format(ff.bel_group[0])
+            CE = FF_pins_dct[CE_key][ff.bel_group[-1]].format(ff.bel_group[0])
+
+            if ff.clb_node_type == 'FF_out':
+                clk_pin = f'{tile}/{next(iter(device.CR_l_clk_pins_dict[(cr, half, x)]))}'
+            if ff.clb_node_type == 'FF_in':
+                clk_pin = f'{tile}/{next(iter(device.CR_s_clk_pins_dict[(cr, half, x)]))}'
+
+            clk_path = nx.shortest_path(G, clk_pin, C)
+            clk_pips = {edge for edge in zip(clk_path, clk_path[1:]) if Edge.is_pip(edge)}
+
+            SR_node = f'{tile}/{SR}'
+            CE_node = f'{tile}/{CE}'
+            VCC_Wire = f'{tile}/VCC_WIRE'
+            pips.update(product({VCC_Wire}, {SR_node, CE_node}))
+            pips.update(clk_pips)
+
+    return pips
 
 class Cell:
     cells = []

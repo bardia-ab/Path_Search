@@ -140,10 +140,12 @@ class Arch:
 
         return pips
 
-    def get_tile_graph(self, tile):
+    def get_tile_graph(self, tile, block=True):
         G = nx.DiGraph()
         G.add_edges_from(self.get_pips(tile))
-        G = self.block_graph(G)
+        if block:
+            G = self.block_graph(G)
+
         return G
 
     def block_graph(self, G):
