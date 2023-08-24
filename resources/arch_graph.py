@@ -285,6 +285,15 @@ class Arch:
 
             self.G.get_edge_data(*edge)['weight'] = weight
 
-    def blocking_nodes(self, tile):
+    def blocking_nodes(self, CD, tile):
         #these are out mode nodes that have pips back to the INT tile
-        return {node.name for node in self.get_nodes(tile=tile, mode='out') if self.G.out_degree(node.name)>1}
+        blocking_nodes = {node.name for node in self.get_nodes(tile=tile, mode='out') if self.G.out_degree(node.name)>1}
+        valid_blocking_nodes = set()
+        for node in blocking_nodes:
+            clb_neighs = list(
+                filter(lambda x: Node(x).clb_node_type == 'FF_in' and CD[Node(x).bel_group] != 'launch',
+                       self.G.neighbors(node)))
+            if clb_neighs:
+                valid_blocking_nodes.add(node)
+
+        return valid_blocking_nodes

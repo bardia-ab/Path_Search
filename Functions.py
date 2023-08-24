@@ -3,6 +3,7 @@ import re, os, pickle, shutil, bz2, sys, time
 import Global_Module as GM
 from itertools import count, product
 from heapq import heappop, heappush, heapify
+from resources.node import Node
 
 def extend_dict(dict_name, key, value, extend=False, value_type='list'):
     if value_type == 'set':
@@ -18,12 +19,12 @@ def extend_dict(dict_name, key, value, extend=False, value_type='list'):
                 dict_name[key].add(value)'''
 
         if key not in dict_name:
-            if isinstance(value, str) or isinstance(value, tuple):
+            if isinstance(value, str) or isinstance(value, tuple) or isinstance(value, Node):
                 dict_name[key] = {value}
             else:
                 dict_name[key] = set(value)
         else:
-            if isinstance(value, str) or isinstance(value, tuple):
+            if isinstance(value, str) or isinstance(value, tuple)  or isinstance(value, Node):
                 dict_name[key].add(value)
             else:
                 dict_name[key].update(value)

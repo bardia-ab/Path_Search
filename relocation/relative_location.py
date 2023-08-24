@@ -42,11 +42,11 @@ class RLOC:
 
             G.add_edge(nodes_dict[edge[0]], nodes_dict[edge[1]], path_type=label)
 
-        for LUT_in in cut.LUTs_func_dict:
-            function = cut.LUTs_func_dict[LUT_in]
-            R_LUT_in = copy.deepcopy(LUT_in)
-            R_LUT_in.name = nodes_dict[LUT_in.name]
-            self.LUTs_func_dict[R_LUT_in] = function
+        for function, LUT_ins in cut.LUTs_func_dict.items():
+            for LUT_in in LUT_ins:
+                R_LUT_in = copy.deepcopy(LUT_in)
+                R_LUT_in.name = nodes_dict[LUT_in.name]
+                extend_dict(self.LUTs_func_dict, function, R_LUT_in, value_type='set')
 
         for ff in cut.FFs_set:
             R_ff = copy.deepcopy(ff)
@@ -160,7 +160,8 @@ class RLOC:
 class DLOC():
 
     def __init__(self, device, TC, R_CUT, origin):
-        self.not_LUT        = None
+        #self.not_LUT        = None
+        self.LUTs_func_dict = {}
         self.FFs_set        = set()
         self.origin         = origin
         self.index          = R_CUT.index
@@ -206,19 +207,19 @@ class DLOC():
             label = R_CUT.G.get_edge_data(*edge)['path_type']
             G.add_edge(nodes_dict[edge[0]], nodes_dict[edge[1]], path_type=label)
 
-        for LUT_in in R_CUT.LUTs_func_dict:
-            function = R_CUT.LUTs_func_dict[LUT_in]
-            D_LUT_in = copy.deepcopy(LUT_in)
-            D_LUT_in.name = nodes_dict[LUT_in.name]
-            if function == 'buffer':
-                neigh = list(G.neighbors(D_LUT_in.name))[0]
-                neigh_type = 'O' if re.match(GM.CLB_out_pattern, neigh) else 'MUX'
-            else:
-                neigh_type = None
-                self.not_LUT = (D_LUT_in.bel_key, D_LUT_in.name)
+        for function, LUT_ins in R_CUT.LUTs_func_dict.items():
+            for LUT_in in LUT_ins:
+                D_LUT_in = copy.deepcopy(LUT_in)
+                D_LUT_in.name = nodes_dict[LUT_in.name]
+                if function == 'buffer':
+                    neigh = list(G.neighbors(D_LUT_in.name))[0]
+                    neigh_type = 'O' if re.match(GM.CLB_out_pattern, neigh) else 'MUX'
+                else:
+                    neigh_type = None
+                    #self.not_LUT = (D_LUT_in.bel_key, D_LUT_in.name)
 
-            extend_dict(TC.LUTs, D_LUT_in.bel_key, (D_LUT_in.name, function, neigh_type))
-
+                extend_dict(TC.LUTs, D_LUT_in.bel_key, (D_LUT_in.name, function, neigh_type))
+                extend_dict(self.LUTs_func_dict, function, D_LUT_in)
 
         for ff in R_CUT.FFs_set:
             D_ff = copy.deepcopy(ff)
@@ -254,6 +255,22 @@ class DLOC():
         DLOC_node = f'{tile}/{port}'
         return DLOC_node
 
+    def get_g_buffer(self):
+        if 'buffer' in self.LUTs_func_dict:
+            buffer_in = self.LUTs_func_dict['buffer'][0].name
+            neigh = next(self.G.neighbors(buffer_in))
+            sink = [node for node in self.G if self.G.out_degree(node) == 0 and re.match(GM.FF_in_pattern, node)][0]
+            brnch_node = [node for node in self.G if self.G.out_degree(node) > 1][0]
+            branch_src_path = nx.shortest_path(self.G, brnch_node, sink)
+            if neigh in branch_src_path:
+                g_buffer = "10"     #not_path belongs to Q_launch
+            else:
+                g_buffer = "11"     #not_path belongs to route_thru
+        else:
+            g_buffer = "00"
+
+        return g_buffer
+
     @property
     def RRG(self):
         RRG = nx.DiGraph()
@@ -265,6 +282,43 @@ class DLOC():
             RRG.add_edges_from(new_edges)
 
         return RRG
+
+    def get_routing_constraint(self, NetName, RouteThruNetName=None):
+        constraints = []
+        if RouteThruNetName is None:
+            constraints.append(f'set_property FIXED_ROUTE {self.routing_constraint} [get_nets {NetName}]\n')
+        else:
+            g_buffer = self.get_g_buffer()
+            buffer_in = self.LUTs_func_dict['buffer'][0].name
+            neigh = next(self.G.neighbors(buffer_in))
+            not_in = self.LUTs_func_dict['not'][0].name
+            sink = [node for node in self.G if self.G.out_degree(node) == 0 and re.match(GM.FF_in_pattern, node)][0]
+            src = [node for node in self.G if self.G.in_degree(node) == 0][0]
+            brnch_node = [node for node in self.G if self.G.out_degree(node) > 1][0]
+            self1 = copy.deepcopy(self)
+            path1 = nx.shortest_path(self.G, src, buffer_in)
+            path2 = nx.shortest_path(self.G, brnch_node, not_in)
+            path3 = nx.shortest_path(self.G, neigh, sink)
+
+            self1.G = nx.DiGraph()
+            self1.G.add_edges_from(zip(path1, path1[1:]))
+            if g_buffer == "10":       #not_path belongs to Q_launch
+                self1.G.add_edges_from(zip(path2, path2[1:]))
+                constraints.append(f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {NetName}]\n')
+                self1.G = nx.DiGraph()
+                self1.G.add_edges_from(zip(path3, path3[1:]))
+                constraints.append(
+                    f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {RouteThruNetName}]\n')
+            else:                       #not_path belongs to route_thru
+                constraints.append(f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {NetName}]\n')
+                self1.G = nx.DiGraph()
+                self1.G.add_edges_from(zip(path3, path3[1:]))
+                self1.G.add_edges_from(zip(path2, path2[1:]))
+                constraints.append(
+                    f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {RouteThruNetName}]\n')
+
+        return constraints
+
 
     @property
     def routing_constraint(self):

@@ -449,7 +449,7 @@ class Cell:
         return constraints
 
     @staticmethod
-    def get_D_CUT_cells(TC, slices_dict, D_CUT):
+    def get_D_CUT_cells(TC, slices_dict, D_CUT, buffer=False):
         cells = {}
         launch_FF_key = {key for key in D_CUT.FFs_set if re.match(GM.FF_out_pattern, TC.FFs[key][0])}.pop()
         slice = slices_dict[get_tile(launch_FF_key)]
@@ -459,12 +459,23 @@ class Cell:
         slice = slices_dict[get_tile(sample_FF_key)]
         bel = get_port(sample_FF_key)
         cells['sample_FF'] = (slice, bel)
-        not_LUT_key = D_CUT.not_LUT[0]
+        #not_LUT_key = D_CUT.not_LUT[0]
+        not_LUT_key = D_CUT.LUTs_func_dict['not'][0].bel_key
         slice = slices_dict[get_tile(not_LUT_key)]
-        subLUT = [lut for lut in TC.LUTs[not_LUT_key] if (D_CUT.not_LUT[1] == lut[0]) and (lut[1] == 'not')].pop()
+        subLUT = [lut for lut in TC.LUTs[not_LUT_key] if (D_CUT.LUTs_func_dict['not'][0].name == lut[0]) and (lut[1] == 'not')].pop()
         idx = 6 - TC.LUTs[not_LUT_key].index(subLUT)
         input = subLUT[0]
         bel = f'{get_port(not_LUT_key)[0]}{idx}LUT'
         cells['not_LUT'] = (slice, bel, input)
+
+        if buffer and 'buffer' in D_CUT.LUTs_func_dict:
+            for buffer_in in D_CUT.LUTs_func_dict['buffer']:
+                buff_LUT_key = buffer_in.bel_key
+                slice = slices_dict[get_tile(buff_LUT_key)]
+                subLUT = [lut for lut in TC.LUTs[buff_LUT_key] if (buffer_in.name == lut[0]) and (lut[1] == 'buffer')].pop()
+                idx = 6 - TC.LUTs[buff_LUT_key].index(subLUT)
+                input = buffer_in.name
+                bel = f'{get_port(buff_LUT_key)[0]}{idx}LUT'
+                extend_dict(cells, 'buff_LUT', (slice, bel, input))
 
         return cells

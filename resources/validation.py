@@ -42,12 +42,13 @@ def check_LUTs(path, TC):
 def check_LUT_utel(TC):
     LUTs_dict = {}
     for cut in TC.CUTs:
-        for LUT_in in cut.LUTs_func_dict:
-            subLUT_usage = 2 if (LUT_in.is_i6 or not GM.LUT_Dual) else 1
-            if LUT_in.bel_key not in LUTs_dict:
-                LUTs_dict[LUT_in.bel_key] = subLUT_usage
-            else:
-                LUTs_dict[LUT_in.bel_key] += subLUT_usage
+        for function, LUT_ins in cut.LUTs_func_dict.items():
+            for LUT_in in LUT_ins:
+                subLUT_usage = 2 if (LUT_in.is_i6 or not GM.LUT_Dual) else 1
+                if LUT_in.bel_key not in LUTs_dict:
+                    LUTs_dict[LUT_in.bel_key] = subLUT_usage
+                else:
+                    LUTs_dict[LUT_in.bel_key] += subLUT_usage
 
     over_utel_LUTs = {key for key in LUTs_dict if LUTs_dict[key] > 2}
     if over_utel_LUTs:

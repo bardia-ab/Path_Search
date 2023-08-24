@@ -10,7 +10,7 @@ import shutil
 start_time = time.time()
 
 origin = sys.argv[1]
-#origin = 'X51Y119'
+#origin = 'X46Y90'
 tile = f'INT_{origin}'
 
 l = len(os.listdir(GM.store_path))

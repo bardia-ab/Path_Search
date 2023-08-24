@@ -18,7 +18,7 @@ from tqdm import tqdm, trange
 
 start_time = time.time()
 coord = sys.argv[1]
-#coord = 'X51Y119'
+#coord = 'X46Y90'
 tile = f'INT_{coord}'
 l = 1 if coord == 'X46Y90' else len(os.listdir(GM.store_path)) + 1
 store_path = os.path.join(GM.store_path, f'iter{l}')
@@ -36,43 +36,44 @@ l_queue = len(queue)
 c = 0
 N_TC = 0
 pbar = trange(l_queue)
-files, last_TC = recon.sort_TCs(l, coord)
-'''TC_prev = load_data(os.path.join(GM.store_path, f'iter{l-1}'), last_TC)
-for edge in TC_prev.G_dev.edges():
-    if edge in dev.G.edges():
-        dev.G.get_edge_data(*edge)['weight'] = TC_prev.G_dev.get_edge_data(*edge)['weight']'''
+if l > 1:
+    files, last_TC = recon.sort_TCs(l, coord)
 
-for file in files:
-    if not queue:
-        break
+    for file in files:
+        if not queue:
+            break
 
-    TC_idx = int(re.search('\d+', file)[0])
-    TC_total = load_data(os.path.join(GM.DLOC_path, f'iter{l - 1}'), f'TC{TC_idx}.data')
-    TC = Configuration(dev, TC_total)
-    TC.remove_route_thrus(coord)
+        TC_idx = int(re.search('\d+', file)[0])
+        TC_total = load_data(os.path.join(GM.DLOC_path, f'iter{l - 1}'), f'TC{TC_idx}.data')
+        TC = Configuration(dev, TC_total)
 
-    '''if TC_idx == 163:
-        TC = load_data(os.path.join(GM.store_path, 'iter1'), f'TC{TC_idx}.data')
-        TC.start_TC_time = time.time()
-        #TC.CD = {'W_T': None, 'W_B': None, 'E_T': None, 'E_B': None}
-        dev.G = TC.G_dev.copy()
-        queue = TC.queue
-        edges = {edge for edge in dev.G.edges() if get_tile(edge[0]) == get_tile(edge[1]) == 'INT_X46Y90'}
-        other_edges = set(dev.G.edges()) - edges
-        for edge in other_edges:
-            dev.G.get_edge_data(*edge)['weight'] = 1'''
-    queue = TC.fill_3(dev, queue, coord, pbar, N_TC, c)
+        TC.remove_route_thrus(coord)
 
-    TC.queue = queue.copy()
-    TC.G_dev = dev.G.copy()
-    store_data(store_path, f'TC{TC_idx}.data', TC)
+        '''if TC_idx == 163:
+            TC = load_data(os.path.join(GM.store_path, 'iter1'), f'TC{TC_idx}.data')
+            TC.start_TC_time = time.time()
+            #TC.CD = {'W_T': None, 'W_B': None, 'E_T': None, 'E_B': None}
+            dev.G = TC.G_dev.copy()
+            queue = TC.queue
+            edges = {edge for edge in dev.G.edges() if get_tile(edge[0]) == get_tile(edge[1]) == 'INT_X46Y90'}
+            other_edges = set(dev.G.edges()) - edges
+            for edge in other_edges:
+                dev.G.get_edge_data(*edge)['weight'] = 1'''
+        queue = TC.fill_3(dev, queue, coord, pbar, N_TC, c)
 
-    N_TC += 1
-    if TC.CUTs:
-        vd.check_LUT_utel(TC)
+        TC.queue = queue.copy()
+        TC.G_dev = dev.G.copy()
+        store_data(store_path, f'TC{TC_idx}.data', TC)
+
+        N_TC += 1
+        if TC.CUTs:
+            vd.check_LUT_utel(TC)
 
 
-TC_idx = len(files)
+    TC_idx = len(files)
+else:
+    TC_idx = 0
+
 while queue:
     TC = Configuration(dev)
     TC.remove_route_thrus(coord)

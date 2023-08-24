@@ -20,6 +20,10 @@ class CUT:
 
         return paths
 
+    def update_LUTs(self, LUTs_func_dict):
+        for function, nodes in LUTs_func_dict.items():
+            extend_dict(self.LUTs_func_dict, function, nodes, value_type='set')
+
     @property
     def main_path(self):
         path_in = {path for path in self.paths if path.path_type == 'path_in'}.pop()

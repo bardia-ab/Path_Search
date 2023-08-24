@@ -101,7 +101,8 @@ class Path:
         for node in filter(lambda x: x.primitive=='LUT', self.nodes):
             LUT_in_type = self.get_LUT_in_type(node)
             LUT_func = self.get_LUT_func(LUT_in_type)
-            dct[node] = LUT_func
+            #dct[node] = LUT_func
+            extend_dict(dct, LUT_func, node, value_type='set')
 
         return dct
 
@@ -113,13 +114,14 @@ class Path:
         else:
             LUTs_func_dict = self.LUTs_dict()
 
-        for LUT_in in LUTs_func_dict:
-            required_subLUTs = 2 if (LUT_in.is_i6 or not GM.LUT_Dual) else 1
-            key = (LUT_in.tile, LUT_in.bel)
-            if key not in usage_dct:
-                usage_dct[key] = required_subLUTs
-            else:
-                usage_dct[key] += required_subLUTs
+        for function, LUT_ins in LUTs_func_dict.items():
+            for LUT_in in LUT_ins:
+                required_subLUTs = 2 if (LUT_in.is_i6 or not GM.LUT_Dual) else 1
+                key = (LUT_in.tile, LUT_in.bel)
+                if key not in usage_dct:
+                    usage_dct[key] = required_subLUTs
+                else:
+                    usage_dct[key] += required_subLUTs
 
         for key in usage_dct:
             free_subLUTs = TC.get_LUTs(tile=key[0], letter=key[1], usage='free')

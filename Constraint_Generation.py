@@ -19,6 +19,16 @@ slices_dict = load_data(GM.load_path, 'clb_site_dict2.data')
 TCs_path = os.path.join(GM.DLOC_path, 'iter24')
 files, Init_TC_file = const.get_Init_TC(TCs_path)
 Init_TC = load_data(TCs_path, Init_TC_file)
+#########################
+'''lut_2 = list(filter(lambda x: len(Init_TC.LUTs[x]) == 2, Init_TC.LUTs))
+buff_2 = list(filter(lambda x: Init_TC.LUTs[x][0][1]=='buffer' and Init_TC.LUTs[x][1][1]=='buffer', lut_2))
+if buff_2:
+    breakpoint()
+
+for key, subLUTs in Init_TC.LUTs.items():
+    subLUTs.sort(key=lambda x: 0 if x[1]=='buffer' else 1)
+    Init_TC.LUTs[key] = subLUTs'''
+########################
 a = {lut:Init_TC.LUTs[lut] for lut in Init_TC.LUTs if len(Init_TC.LUTs[lut])>2}
 #b = {ff:Init_TC.FFs[ff] for ff in Init_TC.FFs if len(Init_TC.FFs[ff])>2}
 
@@ -51,7 +61,7 @@ for idx, D_CUT in enumerate(D_CUTs):
     not_LUT   = Cell('LUT', D_CUT_cells['not_LUT'][0], D_CUT_cells['not_LUT'][1], not_LUT_cell_name)
     not_LUT.inputs = D_CUT_cells['not_LUT'][2]
 
-    routing_constraints.append(f'set_property FIXED_ROUTE {D_CUT.routing_constraint} [get_nets {launch_net}]\n')
+    routing_constraints.append(f'set_property ROUTE {D_CUT.routing_constraint} [get_nets {launch_net}]\n')
 
 #s_FFs = list(filter(lambda x: x.cell_name.endswith('sample_FF'), Cell.cells))
 #s_FFs_tuple = {(c.bel, c.slice) for c in s_FFs}

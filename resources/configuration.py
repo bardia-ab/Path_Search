@@ -285,7 +285,7 @@ class Configuration():
         FFs_set         = path.FFs().copy()
         LUTs_func_dict  = path.LUTs_dict().copy()
         cut.FFs_set.update(FFs_set)
-        cut.LUTs_func_dict.update(LUTs_func_dict)
+        cut.update_LUTs(LUTs_func_dict)
         # set their usage
         if GM.block_mode == 'global':
            FFs_set = self.get_global_FFs(device, FFs_set)
@@ -388,58 +388,60 @@ class Configuration():
     def set_LUTs(self, device, usage, LUTs_func_dict, next_iter_initalization=False):
         #usage: used|blocked
         #next_iter_initalization: True => next_iter
-        for node in LUTs_func_dict:
-            LUT_primitives = self.get_subLUT(usage, node, next_iter_initalization)
-            if not LUT_primitives:
-                continue
+        for function, nodes in LUTs_func_dict.items():
+            for node in nodes:
+                LUT_primitives = self.get_subLUT(usage, node, next_iter_initalization)
+                if not LUT_primitives:
+                    continue
 
-            for LUT_primitive in LUT_primitives:
-                LUT_primitive.inputs = node.name
-                LUT_primitive.Init_tile_node_dicts   = LUTs_func_dict[node]
-                LUT_primitive.usage  = usage
+                for LUT_primitive in LUT_primitives:
+                    LUT_primitive.inputs = node.name
+                    LUT_primitive.func   = function
+                    LUT_primitive.usage  = usage
 
-            ### block i6
-            i6_node = device.get_nodes(is_i6=True, bel=node.bel, tile=node.tile)
-            self.block_nodes = i6_node
+                ### block i6
+                i6_node = device.get_nodes(is_i6=True, bel=node.bel, tile=node.tile)
+                self.block_nodes = i6_node
 
-            ### block the other LUT's inputs
-            if self.is_LUT_full(LUT_primitives[0]):
-                LUT_inputs = device.get_nodes(is_i6=False, bel=node.bel, tile=node.tile, primitive=node.primitive)
-                self.block_nodes = LUT_inputs
+                ### block the other LUT's inputs
+                if self.is_LUT_full(LUT_primitives[0]):
+                    LUT_inputs = device.get_nodes(is_i6=False, bel=node.bel, tile=node.tile, primitive=node.primitive)
+                    self.block_nodes = LUT_inputs
 
     def reset_LUTs(self, device, LUTs_func_dict):
         usage = 'free'
-        for node in LUTs_func_dict:
-            LUT_primitives = self.get_subLUT(usage, node)
-            if not LUT_primitives:
-                continue
+        for function, nodes in LUTs_func_dict.items():
+            for node in nodes:
+                LUT_primitives = self.get_subLUT(usage, node)
+                if not LUT_primitives:
+                    continue
 
-            full_LUT = self.is_LUT_full(LUT_primitives[0])
-            freed_LUT_ins = set()
+                full_LUT = self.is_LUT_full(LUT_primitives[0])
+                freed_LUT_ins = set()
 
-            for LUT_primitive in LUT_primitives:
-                freed_LUT_ins.update(LUT_primitive.inputs)
-                LUT_primitive.clear()
+                for LUT_primitive in LUT_primitives:
+                    freed_LUT_ins.update(LUT_primitive.inputs)
+                    LUT_primitive.clear()
 
-            freed_LUT_ins = {node for LUT_in in freed_LUT_ins for node in device.get_nodes(name=LUT_in)}
+                freed_LUT_ins = {node for LUT_in in freed_LUT_ins for node in device.get_nodes(name=LUT_in)}
 
-            if self.is_LUT_free(LUT_primitives[0]):
-                ### unblock i6
-                i6_node = device.get_nodes(is_i6=True, bel=node.bel, tile=node.tile)
-                if i6_node != freed_LUT_ins:
-                    self.unblock_nodes(device, i6_node)
+                if self.is_LUT_free(LUT_primitives[0]):
+                    ### unblock i6
+                    i6_node = device.get_nodes(is_i6=True, bel=node.bel, tile=node.tile)
+                    if i6_node != freed_LUT_ins:
+                        self.unblock_nodes(device, i6_node)
 
-                ###unblock freed LUTs
-                #freed_LUT_ins = {node for LUT_in in freed_LUT_ins for node in device.get_nodes(name=LUT_in)}
-                #self.unblock_nodes(device, freed_LUT_ins)
+                    ###unblock freed LUTs
+                    #freed_LUT_ins = {node for LUT_in in freed_LUT_ins for node in device.get_nodes(name=LUT_in)}
+                    #self.unblock_nodes(device, freed_LUT_ins)
 
-            if full_LUT:
-                ### unblock the other LUT's inputs
-                used_LUT_in = {inp for prim in LUT_primitives if prim.inputs for inp in prim.inputs}
-                free_LUT_in = device.get_nodes(is_i6=False, bel=node.bel, tile=node.tile, primitive=node.primitive) - used_LUT_in
-                free_LUT_in = free_LUT_in - freed_LUT_ins
-                free_LUT_in = {node.name for node in free_LUT_in} - self.block_nodes
-                self.unblock_nodes(device, free_LUT_in)
+                if full_LUT:
+                    ### unblock the other LUT's inputs
+                    used_LUT_in = {inp for prim in LUT_primitives if prim.inputs for inp in prim.inputs}
+                    free_LUT_in = device.get_nodes(is_i6=False, bel=node.bel, tile=node.tile, primitive=node.primitive) - used_LUT_in
+                    free_LUT_in = free_LUT_in - freed_LUT_ins
+                    free_LUT_in = {node.name for node in free_LUT_in} - self.block_nodes
+                    self.unblock_nodes(device, free_LUT_in)
 
     def get_subLUT(self, usage, node, next_iter_initalization=False):
         LUT_primitives = []
@@ -505,11 +507,13 @@ class Configuration():
     def get_global_LUTs(self, device, LUTs_func_dict):
         global_LUTs_func_dict = {}
         TC_LUT_keys = {f'{lut.tile}/{lut.letter}LUT' for lut in self.LUTs}
-        for node in LUTs_func_dict:
-            global_LUTs = device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix)
+        for function, nodes in LUTs_func_dict.items():
+            global_LUTs = set()
+            for node in nodes:
+                global_LUTs.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))
+
             global_LUTs = {node for node in global_LUTs if node.bel_key in TC_LUT_keys}
-            for LUT_in in global_LUTs:
-                global_LUTs_func_dict[LUT_in] = LUTs_func_dict[node]
+            global_LUTs_func_dict[function] = global_LUTs.copy()
 
         return global_LUTs_func_dict
 
@@ -1141,8 +1145,8 @@ class Configuration():
                 self.G.add_edge('s2', node.name, weight=0)
                 #self.add_edges(('s2', node.name), weight=0)
 
-            block_nodes = dev.blocking_nodes(f'INT_{main_path[0].coordinate}').union(self.block_nodes)
-            block_nodes = block_nodes - set(main_path.str_nodes())
+            block_nodes = dev.blocking_nodes(self.CD, f'INT_{main_path[0].coordinate}').union(self.block_nodes) - set(main_path.str_nodes())
+            #block_nodes = block_nodes - set(main_path.str_nodes())
             not_path = self.get_path(dev, 's2', 't2', dev.weight, block_nodes, 'not')
             if not not_path:
                 self.G.remove_nodes_from(['s2', 't2'])

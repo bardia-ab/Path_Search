@@ -54,7 +54,7 @@ def init_paths():
 
 ############################################################
 root, Data_path     = init_paths()
-store_path          = os.path.join(Data_path, 'Store2')
+store_path          = os.path.join(Data_path, 'Store')
 load_path           = os.path.join(Data_path, 'Load')
 graph_path          = os.path.join(Data_path, 'Compressed Graphs')
 excluded_path       = os.path.join(Data_path, 'No-Path Ports')

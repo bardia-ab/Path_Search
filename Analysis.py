@@ -50,8 +50,8 @@ for TC_idx, file in enumerate(files):
             max_length_pip = (len(cut.main_path), cut.pip.name, cut.main_path)
 #covered_pips = {pip.name for pip in covered_pips}
 remaining_pips = set(queue) - covered_pips
-store_data(GM.Data_path, 'remaining_pips.data', remaining_pips - spare_pips)
-store_data(GM.Data_path, 'spare_pips.data')
+#store_data(GM.Data_path, 'remaining_pips.data', remaining_pips - spare_pips)
+#store_data(GM.Data_path, 'spare_pips.data')
 print(len(covered_pips))
 print(max(path_length))
 print(min(path_length))
