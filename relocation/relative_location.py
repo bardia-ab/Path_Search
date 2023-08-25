@@ -260,7 +260,14 @@ class DLOC():
             buffer_in = self.LUTs_func_dict['buffer'][0].name
             neigh = next(self.G.neighbors(buffer_in))
             sink = [node for node in self.G if self.G.out_degree(node) == 0 and re.match(GM.FF_in_pattern, node)][0]
-            brnch_node = [node for node in self.G if self.G.out_degree(node) > 1][0]
+            brnch_node = [node for node in self.G if self.G.out_degree(node) > 1]
+            if brnch_node:
+                brnch_node = brnch_node[0]
+            elif self.LUTs_func_dict['not'][0].name == self.LUTs_func_dict['buffer'][0].name:
+                brnch_node = self.LUTs_func_dict['not'][0].name
+            else:
+                breakpoint()
+
             branch_src_path = nx.shortest_path(self.G, brnch_node, sink)
             if neigh in branch_src_path:
                 g_buffer = "10"     #not_path belongs to Q_launch
@@ -294,7 +301,14 @@ class DLOC():
             not_in = self.LUTs_func_dict['not'][0].name
             sink = [node for node in self.G if self.G.out_degree(node) == 0 and re.match(GM.FF_in_pattern, node)][0]
             src = [node for node in self.G if self.G.in_degree(node) == 0][0]
-            brnch_node = [node for node in self.G if self.G.out_degree(node) > 1][0]
+            brnch_node = [node for node in self.G if self.G.out_degree(node) > 1]
+            if brnch_node:
+                brnch_node = brnch_node[0]
+            elif self.LUTs_func_dict['not'][0].name == self.LUTs_func_dict['buffer'][0].name:
+                brnch_node = self.LUTs_func_dict['not'][0].name
+            else:
+                breakpoint()
+
             self1 = copy.deepcopy(self)
             path1 = nx.shortest_path(self.G, src, buffer_in)
             path2 = nx.shortest_path(self.G, brnch_node, not_in)

@@ -31,7 +31,7 @@ VHDL_file.add_signal('w_Error', 'my_array(0 to g_N_Segments - 1)(g_N_Parallel - 
 VHDL_file.add_assignment('o_Error', 'w_Error')
 
 
-TCs_path = os.path.join(GM.DLOC_path, 'iter11')
+TCs_path = os.path.join(GM.DLOC_path, 'iter17')
 files, Init_TC_file = const.get_Init_TC(TCs_path)
 Init_TC = load_data(TCs_path, Init_TC_file)
 #########################
