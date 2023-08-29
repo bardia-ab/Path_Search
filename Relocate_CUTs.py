@@ -4,6 +4,7 @@ from relocation.relative_location import RLOC, DLOC
 import Global_Module as GM
 from Functions import *
 from tqdm import tqdm
+import resources.validation as vd
 from joblib import Parallel, delayed
 import shutil
 
@@ -65,6 +66,9 @@ for idx, file in enumerate(files):
 
     TC.set_blocked_invalid_primitives()
     TC.CD = conf.CD.copy()
+    if vd.check_DCUT_LUT_utel(TC):  #LUT overutelization
+        breakpoint()
+
     store_data(DLOC_path, f'TC{TC_idx}.data', TC)
     pbar.update(1)
     pbar.set_description(f'TC{TC_idx}')

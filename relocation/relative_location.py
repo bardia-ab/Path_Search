@@ -258,6 +258,7 @@ class DLOC():
     def get_g_buffer(self):
         if 'buffer' in self.LUTs_func_dict:
             buffer_in = self.LUTs_func_dict['buffer'][0].name
+            not_in = self.LUTs_func_dict['not'][0].name
             neigh = next(self.G.neighbors(buffer_in))
             sink = [node for node in self.G if self.G.out_degree(node) == 0 and re.match(GM.FF_in_pattern, node)][0]
             brnch_node = [node for node in self.G if self.G.out_degree(node) > 1]
@@ -268,9 +269,11 @@ class DLOC():
             else:
                 breakpoint()
 
-            branch_src_path = nx.shortest_path(self.G, brnch_node, sink)
-            if neigh in branch_src_path:
+            branch_sink_path = nx.shortest_path(self.G, brnch_node, sink)
+            if neigh in branch_sink_path:
                 g_buffer = "10"     #not_path belongs to Q_launch
+            elif nx.has_path(self.G, neigh, not_in):
+                g_buffer = "01"     #not_path belongs to Q_launch and route_thru is between brnc_node and not_in
             else:
                 g_buffer = "11"     #not_path belongs to route_thru
         else:
@@ -312,11 +315,14 @@ class DLOC():
             self1 = copy.deepcopy(self)
             path1 = nx.shortest_path(self.G, src, buffer_in)
             path2 = nx.shortest_path(self.G, brnch_node, not_in)
-            path3 = nx.shortest_path(self.G, neigh, sink)
+            if nx.has_path(self.G, neigh, sink):
+                path3 = nx.shortest_path(self.G, neigh, sink)
+            else:
+                path3 = nx.shortest_path(self.G, neigh, not_in)
 
             self1.G = nx.DiGraph()
             self1.G.add_edges_from(zip(path1, path1[1:]))
-            if g_buffer == "10":       #not_path belongs to Q_launch
+            if g_buffer in {"10", "01"}:       #not_path belongs to Q_launch
                 self1.G.add_edges_from(zip(path2, path2[1:]))
                 constraints.append(f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {NetName}]\n')
                 self1.G = nx.DiGraph()

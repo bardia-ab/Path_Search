@@ -118,6 +118,9 @@ class Configuration:
                 tile = self.get_tile(lut)
                 bel = self.get_port(lut)[0]
                 self.blocked_LUTs.add(f'{tile}/{bel}{idx}LUT')
+                if subLUT[0][-1] == '6':
+                    self.blocked_LUTs.add(f'{tile}/{bel}5LUT')
+
                 if i == 1:
                     FF1 = subLUT[0][:-1] + 'Q'
                     FF2 = subLUT[0][:-1] + 'Q2'
