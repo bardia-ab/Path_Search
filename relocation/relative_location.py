@@ -170,6 +170,9 @@ class DLOC():
     def __repr__(self):
         return f'CUT{self.index}_{self.origin}'
 
+    #def __eq__(self, other):
+        #return f'CUT{self.index}_{self.origin}' == f'CUT{other.index}_{other.origin}'
+
     def get_DLOC_G(self, device, TC, R_CUT):
         nodes_dict = {}
         G = nx.DiGraph()

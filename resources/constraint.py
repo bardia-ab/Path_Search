@@ -424,7 +424,7 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
     ########################################################
     TC_idx = int(re.search('\d+', TC_file)[0])
     src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}')
-    #create_folder(src_path)
+    create_folder(src_path)
     TC = load_data(TCs_path, TC_file)
     D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs]
     D_CUTs.sort(key=lambda x: x.index * 10000 + DLOC.get_x_coord(x.origin) * 1000 + DLOC.get_y_coord(x.origin))
@@ -464,7 +464,7 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
 
     cell_constraints = Cell.get_cell_constraints()
 
-    '''with open(os.path.join(src_path, 'stats.txt'), 'w+') as file:
+    with open(os.path.join(src_path, 'stats.txt'), 'w+') as file:
         file.write(f'N_Segments = {N_Segments - 1}\n')
         file.write(f'N_Partial = {N_Partial}')
 
@@ -473,7 +473,7 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
         file.write('\n')
         file.writelines(routing_constraints)
 
-    VHDL_file.print(os.path.join(src_path, 'CUTs.vhd'))'''
+    VHDL_file.print(os.path.join(src_path, 'CUTs.vhd'))
 
 class Cell:
     cells = []
