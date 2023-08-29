@@ -11,7 +11,7 @@ import shutil
 start_time = time.time()
 
 origin = sys.argv[1]
-#origin = 'X46Y90'
+#origin = 'X45Y90'
 tile = f'INT_{origin}'
 
 l = len(os.listdir(GM.store_path))
@@ -66,7 +66,8 @@ for idx, file in enumerate(files):
 
     TC.set_blocked_invalid_primitives()
     TC.CD = conf.CD.copy()
-    if vd.check_DCUT_LUT_utel(TC):  #LUT overutelization
+    result, invalid_keys = vd.check_DCUT_LUT_utel(TC)
+    if result:  #LUT overutelization
         breakpoint()
 
     store_data(DLOC_path, f'TC{TC_idx}.data', TC)

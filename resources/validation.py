@@ -68,4 +68,4 @@ def check_DCUT_LUT_utel(TC):
             LUTs_dict[key] += usage
 
     invalid_keys= {k:TC.LUTs[k] for k,v in LUTs_dict.items() if v > 2}
-    return bool(len(invalid_keys))
+    return bool(len(invalid_keys)), invalid_keys

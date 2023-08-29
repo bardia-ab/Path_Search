@@ -15,19 +15,21 @@ from resources.rtl import *
 import resources.validation as vd
 from resources.node import Node
 
-TCs_path = os.path.join(GM.DLOC_path, 'iter45')
+#TCs_path = os.path.join(GM.DLOC_path, 'iter45')
+TCs_path = os.path.join(GM.Data_path, 'iter53')
 TC_files = [file for file in os.listdir(TCs_path) if file.startswith('TC')]
 #########################
-'''invalid_TCs = []
+invalid_TCs = []
 for idx, TC_file in enumerate(TC_files):
     print(idx)
     TC = load_data(TCs_path, TC_file)
-    if vd.check_DCUT_LUT_utel(TC):
+    result, invalid_keys = vd.check_DCUT_LUT_utel(TC)
+    if result:
         invalid_TCs.append(TC_file)
 
-store_data(GM.Data_path, 'invalid_TCs.data', invalid_TCs)'''
+#store_data(GM.Data_path, 'invalid_TCs.data', invalid_TCs)
 
-'''invalid_TCs = load_data(GM.Data_path, 'invalid_TCs.data')
+#invalid_TCs = load_data(GM.Data_path, 'invalid_TCs.data')
 removed_DCUTs = {}
 for idx, TC_file in enumerate(invalid_TCs):
     removed_DCUTs[TC_file] = []
@@ -69,7 +71,7 @@ for idx, TC_file in enumerate(invalid_TCs):
     print(idx)
     store_data(TCs_path, TC_file, TC)
 
-store_data(GM.Data_path, 'removed_DCUTs.data', removed_DCUTs)'''
+#store_data(GM.Data_path, 'removed_DCUTs.data', removed_DCUTs)
 
 '''pips = set()
 pbar = tqdm(total=len(TC_files))
@@ -85,7 +87,7 @@ for idx, TC_file in enumerate(TC_files):
 pips = set(filter(lambda x: x[0].startswith('INT') and 38 <= D_CUT.get_x_coord(x[0]) <= 51 and 60 <= D_CUT.get_y_coord(x[0]) <= 119, pips))
 print(len(pips))'''
 
-pbar = tqdm(total=len(TC_files))
+'''pbar = tqdm(total=len(TC_files))
 
 for idx, TC_file in enumerate(TC_files):
     LUTs = {}
@@ -106,7 +108,7 @@ for idx, TC_file in enumerate(TC_files):
     if {key for key, usage in LUTs.items() if usage > 2}:
         breakpoint()
 
-    pbar.update(1)
+    pbar.update(1)'''
 
 #removed_DCUTs = load_data(GM.Data_path, 'removed_DCUTs.data')
 #print(len({v for k,vs in removed_DCUTs.items() for v in vs}))

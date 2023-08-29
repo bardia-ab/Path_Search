@@ -194,7 +194,8 @@ class DLOC():
                 LUT_key = Node(DLOC_node).bel_key
                 N = 2 if DLOC_node[-1] == 6 else 1
                 if LUT_key in TC.LUTs:
-                    if (2 - len(TC.LUTs[LUT_key])) < N:
+                    curr_usage = sum([2 if re.match(GM.LUT_in6_pattern, sub[0]) else 1 for sub in TC.LUTs[LUT_key]])
+                    if (2 - curr_usage) < N:
                         self.reason = 'LUT over utelization'
                         return None     #LUT over utelization
 
@@ -263,6 +264,7 @@ class DLOC():
             buffer_in = self.LUTs_func_dict['buffer'][0].name
             not_in = self.LUTs_func_dict['not'][0].name
             neigh = next(self.G.neighbors(buffer_in))
+            src = [node for node in self.G if self.G.in_degree(node) == 0][0]
             sink = [node for node in self.G if self.G.out_degree(node) == 0 and re.match(GM.FF_in_pattern, node)][0]
             brnch_node = [node for node in self.G if self.G.out_degree(node) > 1]
             if brnch_node:
@@ -272,11 +274,13 @@ class DLOC():
             else:
                 breakpoint()
 
+            src_sink_path = nx.shortest_path(self.G, src, sink)
             branch_sink_path = nx.shortest_path(self.G, brnch_node, sink)
-            if neigh in branch_sink_path:
-                g_buffer = "10"     #not_path belongs to Q_launch
-            elif nx.has_path(self.G, neigh, not_in):
+
+            if buffer_in not in src_sink_path:
                 g_buffer = "01"     #not_path belongs to Q_launch and route_thru is between brnc_node and not_in
+            elif neigh in branch_sink_path:
+                g_buffer = "10"     # not_path belongs to Q_launch
             else:
                 g_buffer = "11"     #not_path belongs to route_thru
         else:
@@ -298,10 +302,10 @@ class DLOC():
 
     def get_routing_constraint(self, NetName, RouteThruNetName=None):
         constraints = []
-        if RouteThruNetName is None:
+        g_buffer = self.get_g_buffer()
+        if g_buffer == "00":
             constraints.append(f'set_property FIXED_ROUTE {self.routing_constraint} [get_nets {NetName}]\n')
         else:
-            g_buffer = self.get_g_buffer()
             buffer_in = self.LUTs_func_dict['buffer'][0].name
             neigh = next(self.G.neighbors(buffer_in))
             not_in = self.LUTs_func_dict['not'][0].name
@@ -316,27 +320,41 @@ class DLOC():
                 breakpoint()
 
             self1 = copy.deepcopy(self)
-            path1 = nx.shortest_path(self.G, src, buffer_in)
-            path2 = nx.shortest_path(self.G, brnch_node, not_in)
-            if nx.has_path(self.G, neigh, sink):
-                path3 = nx.shortest_path(self.G, neigh, sink)
-            else:
-                path3 = nx.shortest_path(self.G, neigh, not_in)
 
-            self1.G = nx.DiGraph()
-            self1.G.add_edges_from(zip(path1, path1[1:]))
-            if g_buffer in {"10", "01"}:       #not_path belongs to Q_launch
+            if g_buffer == "10":       #not_path belongs to Q_launch
+                path1 = nx.shortest_path(self.G, src, buffer_in)
+                path2 = nx.shortest_path(self.G, src, not_in)
+                self1.G = nx.DiGraph()
+                self1.G.add_edges_from(zip(path1, path1[1:]))
                 self1.G.add_edges_from(zip(path2, path2[1:]))
                 constraints.append(f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {NetName}]\n')
                 self1.G = nx.DiGraph()
+                path3 = nx.shortest_path(self.G, neigh, sink)
+                self1.G.add_edges_from(zip(path3, path3[1:]))
+                constraints.append(
+                    f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {RouteThruNetName}]\n')
+            elif g_buffer == "01":
+                path1 = nx.shortest_path(self.G, src, sink)
+                path2 = nx.shortest_path(self.G, src, buffer_in)
+                self1.G = nx.DiGraph()
+                self1.G.add_edges_from(zip(path1, path1[1:]))
+                self1.G.add_edges_from(zip(path2, path2[1:]))
+                constraints.append(f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {NetName}]\n')
+                self1.G = nx.DiGraph()
+                path3 = nx.shortest_path(self.G, neigh, not_in)
                 self1.G.add_edges_from(zip(path3, path3[1:]))
                 constraints.append(
                     f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {RouteThruNetName}]\n')
             else:                       #not_path belongs to route_thru
+                path1 = nx.shortest_path(self.G, src, buffer_in)
+                self1.G = nx.DiGraph()
+                self1.G.add_edges_from(zip(path1, path1[1:]))
                 constraints.append(f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {NetName}]\n')
                 self1.G = nx.DiGraph()
-                self1.G.add_edges_from(zip(path3, path3[1:]))
+                path2 = nx.shortest_path(self.G, neigh, sink)
+                path3 = nx.shortest_path(self.G, neigh, not_in)
                 self1.G.add_edges_from(zip(path2, path2[1:]))
+                self1.G.add_edges_from(zip(path3, path3[1:]))
                 constraints.append(
                     f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {RouteThruNetName}]\n')
 

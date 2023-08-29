@@ -450,13 +450,13 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
         not_LUT.inputs = D_CUT_cells['not_LUT'][2]
 
         g_Buffer = D_CUT.get_g_buffer()
-        if g_Buffer[0] == '1':
+        if g_Buffer == "00":
+            route_thru_net = None
+        else:
             buff_LUT_cell_name = name_prefix.format(idx, 'Buff_Gen.buffer_LUT')
             buffer_LUT = Cell('LUT', D_CUT_cells['buff_LUT'][0][0], D_CUT_cells['buff_LUT'][0][1], buff_LUT_cell_name)
             buffer_LUT.inputs = D_CUT_cells['buff_LUT'][0][2]
             route_thru_net = name_prefix.format(idx, 'Route_Thru')
-        else:
-            route_thru_net = None
 
         VHDL_file.add_components(
             ''.join(get_instantiation(idx, 'i_Clk_Launch', 'i_Clk_Sample', 'i_CE', 'i_CLR', w_Error_Mux_In, g_Buffer)))
