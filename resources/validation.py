@@ -1,3 +1,5 @@
+import re
+
 import networkx as nx
 import Global_Module as GM
 from resources.node import Node
@@ -57,3 +59,13 @@ def check_LUT_utel(TC):
     else:
         return True
 
+def check_DCUT_LUT_utel(TC):
+    LUTs_dict = {}
+    for key, subLUTs in TC.LUTs.items():
+        LUTs_dict[key] = 0
+        for subLUT in subLUTs:
+            usage = 2 if re.match(GM.LUT_in6_pattern, subLUT[0]) else 1
+            LUTs_dict[key] += usage
+
+    invalid_keys= {k:TC.LUTs[k] for k,v in LUTs_dict.items() if v > 2}
+    return bool(len(invalid_keys))
