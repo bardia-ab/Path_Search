@@ -1,3 +1,5 @@
+import re
+
 import networkx as nx
 
 from resources.cut import CUT
@@ -444,6 +446,15 @@ class Configuration():
                     self.unblock_nodes(device, free_LUT_in)
 
     def get_subLUT(self, usage, node, next_iter_initalization=False):
+        cut = self.CUTs[-1]
+        muxed_node = list(filter(lambda x: re.match(GM.MUXED_CLB_out_pattern, x), cut.G))
+        if muxed_node:
+            muxed_node = muxed_node[0]
+            pred = Node(next(cut.G.predecessors(muxed_node)))
+            MUX_flag = pred.bel_group == node.bel_group and pred.bel == node.bel
+        else:
+            MUX_flag = False
+
         LUT_primitives = []
         if usage == 'free':
             LUT_primitives.extend(self.get_LUTs(tile=node.tile, letter=node.bel, type=node.primitive, usage='used'))
@@ -459,6 +470,8 @@ class Configuration():
             LUT_primitives.sort(key=lambda x: x.name, reverse=True)   #[6LUT, 5LUT]
 
         if node.is_i6:
+            return LUT_primitives
+        elif MUX_flag:
             return LUT_primitives
         elif not GM.LUT_Dual:
             return LUT_primitives
@@ -1142,6 +1155,9 @@ class Configuration():
                 self.add_edges((LUT_in.name, 't2'), weight=0)
 
             for node in main_path:
+                if node.clb_node_type == 'LUT_in':
+                    continue
+
                 self.G.add_edge('s2', node.name, weight=0)
                 #self.add_edges(('s2', node.name), weight=0)
 

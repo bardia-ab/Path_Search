@@ -109,6 +109,8 @@ class Path:
     def verify_path(self, device, TC):
         result = True
         usage_dct = {}
+        cut = TC.CUTs[-1]
+        muxed_node = list(filter(lambda x: re.match(GM.MUXED_CLB_out_pattern, x), cut.G))
         if GM.block_mode == 'global':
            LUTs_func_dict = TC.get_global_LUTs(device, self.LUTs_dict())
         else:
@@ -116,7 +118,14 @@ class Path:
 
         for function, LUT_ins in LUTs_func_dict.items():
             for LUT_in in LUT_ins:
-                required_subLUTs = 2 if (LUT_in.is_i6 or not GM.LUT_Dual) else 1
+                if muxed_node:
+                    muxed_node = muxed_node[0]
+                    pred = Node(next(cut.G.predecessors(muxed_node)))
+                    MUX_flag = pred.bel_group == LUT_in.bel_group and pred.bel == LUT_in.bel
+                else:
+                    MUX_flag = False
+
+                required_subLUTs = 2 if (LUT_in.is_i6 or not GM.LUT_Dual or MUX_flag) else 1
                 key = (LUT_in.tile, LUT_in.bel)
                 if key not in usage_dct:
                     usage_dct[key] = required_subLUTs
