@@ -274,7 +274,9 @@ class Arch:
         for edge in self.G.edges():
             if self.get_tile(edge[0]) == self.get_tile(edge[1]):
                 if self.get_tile(edge[0]).startswith('CLE'):
-                    if re.match(Global_Module.LUT_in6_pattern, edge[0]):
+                    if re.match(Global_Module.MUXED_CLB_out_pattern, edge[0]) or re.match(Global_Module.MUXED_CLB_out_pattern, edge[1]):
+                        weight = 100
+                    elif re.match(Global_Module.LUT_in6_pattern, edge[0]):
                         weight = 50
                     else:
                         weight = 25  # CLB_Route_Thru
