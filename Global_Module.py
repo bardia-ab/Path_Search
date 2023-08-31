@@ -64,7 +64,7 @@ DLOC_path           = os.path.join(Data_path, 'DLOC_dicts')
 Uncovered_PIPs_path = os.path.join(Data_path, 'Uncovered_PIPs')
 
 ######## LUT Dual Mode
-print_message = False
+print_message = True
 LUT_Dual = True
 block_mode = 'global'   #global|local
 route_thru = True

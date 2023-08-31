@@ -49,16 +49,6 @@ if l > 1:
 
         TC.remove_route_thrus(coord)
 
-        '''if TC_idx == 163:
-            TC = load_data(os.path.join(GM.store_path, 'iter1'), f'TC{TC_idx}.data')
-            TC.start_TC_time = time.time()
-            #TC.CD = {'W_T': None, 'W_B': None, 'E_T': None, 'E_B': None}
-            dev.G = TC.G_dev.copy()
-            queue = TC.queue
-            edges = {edge for edge in dev.G.edges() if get_tile(edge[0]) == get_tile(edge[1]) == 'INT_X46Y90'}
-            other_edges = set(dev.G.edges()) - edges
-            for edge in other_edges:
-                dev.G.get_edge_data(*edge)['weight'] = 1'''
         queue = TC.fill_3(dev, queue, coord, pbar, N_TC, c)
 
         TC.queue = queue.copy()
@@ -77,6 +67,18 @@ else:
 while queue:
     TC = Configuration(dev)
     TC.remove_route_thrus(coord)
+
+    '''if TC_idx == 75:
+        TC = load_data(os.path.join(GM.store_path, 'iter1'), f'TC{TC_idx}.data')
+        #TC.CD = {'W_T': None, 'W_B': None, 'E_T': None, 'E_B': None}
+        dev.G = TC.G_dev.copy()
+        queue = TC.queue
+        TC._block_nodes = set()
+        TC.start_TC_time = time.time()
+        edges = {edge for edge in dev.G.edges() if get_tile(edge[0]) == get_tile(edge[1]) == 'INT_X46Y90'}
+        other_edges = set(dev.G.edges()) - edges
+        for edge in other_edges:
+            dev.G.get_edge_data(*edge)['weight'] = 1'''
 
     queue = TC.fill_3(dev, queue, coord, pbar, TC_idx, c)
 

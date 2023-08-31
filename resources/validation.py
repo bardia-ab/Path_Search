@@ -46,10 +46,12 @@ def check_LUT_utel(TC):
     LUTs_dict = {}
     for cut in TC.CUTs:
         muxed_node = list(filter(lambda x: re.match(GM.MUXED_CLB_out_pattern, x), cut.G))
+        if muxed_node:
+            muxed_node = muxed_node[0]
+
         for function, LUT_ins in cut.LUTs_func_dict.items():
             for LUT_in in LUT_ins:
                 if muxed_node:
-                    muxed_node = muxed_node[0]
                     pred = Node(next(cut.G.predecessors(muxed_node)))
                     MUX_flag = pred.bel_group == LUT_in.bel_group and pred.bel == LUT_in.bel
                 else:
@@ -120,7 +122,7 @@ def remove_invalid_D_CUTs(TCs_path, TC_file, D_CUTs):
             del TC.FFs[ff]
 
     print(TC_file)
-    return TC
+    store_data(TCs_path, TC_file, TC)
 
 def get_TC_DCUT_dict(invalid_D_CUTs):
     dct = {}
@@ -128,3 +130,17 @@ def get_TC_DCUT_dict(invalid_D_CUTs):
         extend_dict(dct, element[0], element[1])
 
     return dct
+
+def get_covered_pips(TCs_path, TC_file):
+    pips = set()
+    TC = load_data(TCs_path, TC_file)
+    for R_CUT in TC.CUTs:
+        for D_CUT in R_CUT.D_CUTs:
+            pips.update(edge for edge in D_CUT.G.edges() if
+                        D_CUT.G.get_edge_data(*edge)['path_type'] == 'main_path' and D_CUT.is_pip(edge))
+
+    pips = set(filter(
+        lambda x: x[0].startswith('INT') and 38 <= D_CUT.get_x_coord(x[0]) <= 51 and 60 <= D_CUT.get_y_coord(
+            x[0]) <= 119, pips))
+
+    return pips

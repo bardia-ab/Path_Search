@@ -408,6 +408,7 @@ def get_FFs_CTRL_pips(device, FFs):
     return pips
 
 def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
+    Cell.cells = []
     VHDL_file = VHDL('CUTs', 'behavioral')
     VHDL_file.add_package('ieee', 'std_logic_1164')
     VHDL_file.add_package('work', 'my_package')
@@ -538,7 +539,8 @@ class Cell:
         bel = f'{get_port(not_LUT_key)[0]}{idx}LUT'
         cells['not_LUT'] = (slice, bel, input)
 
-        if buffer and 'buffer' in D_CUT.LUTs_func_dict:
+        if D_CUT.get_g_buffer() != "00":
+        #if buffer and 'buffer' in D_CUT.LUTs_func_dict:
             for buffer_in in D_CUT.LUTs_func_dict['buffer']:
                 buff_LUT_key = buffer_in.bel_key
                 slice = slices_dict[get_tile(buff_LUT_key)]

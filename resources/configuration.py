@@ -1101,6 +1101,9 @@ class Configuration():
         return queue
 
     def fill_3(self, dev, queue, coord, pbar, TC_idx, c):
+        if not self.CUTs and self.block_nodes and coord == 'X46Y90':
+            breakpoint()
+
         int_tile = f'INT_{coord}'
         out_nodes = {edge[1] for edge in queue}
         '''invalid_out_nodes = set()
@@ -1268,7 +1271,7 @@ class Configuration():
         self.G.remove_edge('out_node', node)
         return path, (p2[-2], p1[1])
 
-    def func(self, device, path):
+    def get_global_nodes(self, device, path):
         global_nodes = set()
         for node in path:
             if node.startswith('INT'):
@@ -1288,8 +1291,10 @@ class Configuration():
 
         visited_preds = {pip[0] for pip in self.G.in_edges(path_out1[0]) if pip not in queue}
         try:
+            #bidirectional pips could be problematic, so add set(self.G.neighbors(path_out1[0])) to block_nodes
+            block_nodes = self.block_nodes.union(visited_preds).union(set(self.G.neighbors(path_out1[0])))
             path_in1 = path_finder(self.G, 's', path_out1[0], weight='weight', dummy_nodes=['s', 't', 'out_node', 's2', 't2'],
-                               blocked_nodes=self.block_nodes.union(visited_preds), conflict_free=False)[1:]
+                               blocked_nodes=block_nodes, conflict_free=False)[1:]
         except:
             self.G.remove_edge('out_node', path_out1[0])
             self.remove_CUT(device)
@@ -1297,6 +1302,8 @@ class Configuration():
 
         pip = tuple(path_in1[-2:])
         neigh_pip_v = list(self.G.neighbors(pip[1]))[0]
+        pred_pip_u = list(self.G.predecessors(pip[0]))[0]
+        route_thru_flag = bool(re.match(GM.Unregistered_CLB_out_pattern, pred_pip_u)) or bool(re.match(GM.LUT_in_pattern, neigh_pip_v))
         self.G.remove_edge('out_node', pip[1])
 
         if len(path_out1) < len(path_in1):
@@ -1310,10 +1317,15 @@ class Configuration():
                 block_nodes = self.block_nodes.union(src)
             else:
                 block_nodes = self.block_nodes
+                if route_thru_flag:
+                    clb_node = Node(neigh_pip_v) if neigh_pip_v.startswith('CLE') else Node(pred_pip_u)
+                    forbiden_srcs = {node for node in self.G.neighbors('s')
+                                     if get_tile(node) == clb_node.tile and Node(node).bel == clb_node.bel}
+                    block_nodes = block_nodes.union(forbiden_srcs)
 
             path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes, 'path_in')
             if not path_in:
-                unblock_nodes = set(path_in1[:-1]) & self.func(device, path_out.str_nodes())
+                unblock_nodes = set(path_in1[:-1]) & self.get_global_nodes(device, path_out.str_nodes())
                 if not unblock_nodes & set(path_out.str_nodes()):
                     coord = get_tile(pip[0]).split('_X')[-1]
                     self.create_CUT(coord, None)
@@ -1330,6 +1342,12 @@ class Configuration():
             else:
                 block_nodes = self.block_nodes
 
+            if route_thru_flag:
+                clb_node = Node(neigh_pip_v) if neigh_pip_v.startswith('CLE') else Node(pred_pip_u)
+                forbiden_srcs = {node for node in self.G.neighbors('s')
+                                 if get_tile(node).tile == clb_node.tile and Node(node).bel == clb_node.bel}
+                block_nodes = block_nodes.union(forbiden_srcs)
+
             path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes, 'path_in')
             if not path_in:
                 return  None
@@ -1337,7 +1355,7 @@ class Configuration():
             self.decide_long_pips(device, pip)
             path_out = self.get_path(device, pip[1], 't', 'weight', self.block_nodes, 'path_out')
             if not path_out:
-                unblock_nodes = set(path_out1) & self.func(device, path_in.str_nodes())
+                unblock_nodes = set(path_out1) & self.get_global_nodes(device, path_in.str_nodes())
                 if not unblock_nodes & set(path_in.str_nodes()):
                     coord = get_tile(pip[0]).split('_X')[-1]
                     self.create_CUT(coord, None)

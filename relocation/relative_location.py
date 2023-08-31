@@ -191,8 +191,13 @@ class DLOC():
                     return None     #Collision
 
             if re.match(GM.LUT_in_pattern, DLOC_node):
+                neigh = list(R_CUT.G.neighbors(node))
+                if neigh:
+                    neigh = neigh[0]
+                    MUX_flag = neigh.endswith('MUX')
+
                 LUT_key = Node(DLOC_node).bel_key
-                N = 2 if DLOC_node[-1] == 6 else 1
+                N = 2 if (DLOC_node[-1] == 6 or not GM.LUT_Dual or MUX_flag) else 1
                 if LUT_key in TC.LUTs:
                     curr_usage = sum([2 if re.match(GM.LUT_in6_pattern, sub[0]) else 1 for sub in TC.LUTs[LUT_key]])
                     if (2 - curr_usage) < N:
@@ -260,6 +265,9 @@ class DLOC():
         return DLOC_node
 
     def get_g_buffer(self):
+        if list(filter(lambda x: re.match(GM.MUXED_CLB_out_pattern, x), self.G)):
+            return "00"
+
         if 'buffer' in self.LUTs_func_dict:
             buffer_in = self.LUTs_func_dict['buffer'][0].name
             not_in = self.LUTs_func_dict['not'][0].name
