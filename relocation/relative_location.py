@@ -2,14 +2,14 @@ from resources.cut import CUT
 from resources.node import Node
 from relocation.tile import Tile
 import networkx as nx
-import re, copy
+import re, copy, concurrent.futures
 from itertools import product
 from Functions import extend_dict
 import Global_Module as GM
 class RLOC:
     def __init__(self, cut: CUT, idx):
         self.LUTs_func_dict = {}
-        self.FFs_set = set()
+        self.FFs_set        = set()
         self.G              = self.get_RLOC_G(cut)
         self.index          =   idx
         self.origins        = set()
@@ -17,6 +17,19 @@ class RLOC:
 
     def __repr__(self):
         return f'CUT{self.index}'
+
+    def get_RLOC_node(self, node: Node, origin):
+        if node.tile_type == 'INT':
+            tile = f'INT_{self.get_RLOC_coord(node.tile, origin)}'
+            port = node.port
+        else:
+            tile = f'CLB_{node.bel_group[0]}_{self.get_RLOC_coord(node.tile, origin)}'
+            port = node.port_suffix
+
+        #with concurrent.futures.ProcessPoolExecutor() as executor:
+            #RLOC_nodes = executor.map(self.get_RLOC_node, cut.nodes, product({origin}, repeat=len(cut.nodes)))
+
+        return f'{tile}/{port}'
 
     def get_RLOC_G(self, cut):
         nodes_dict = {}
@@ -55,61 +68,6 @@ class RLOC:
 
         return G
 
-    def get_DLOC_G(self, device, D_coord):
-        nodes_dict = {}
-        G = nx.DiGraph()
-
-        for node in self.G:
-            coordinate = self.get_DLOC_coord(self.get_tile(node), D_coord)
-            if coordinate not in device.tiles_map:
-                return None
-
-            if node.startswith('INT'):
-                '''if not device.get_tiles(coordinate=coordinate):
-                    return None'''
-
-                tile = f'INT_{coordinate}'
-                port = self.get_port(node)
-            else:
-                direction = self.get_direction(node)
-                #tile = device.get_tiles(coordinate=coordinate, direction=direction)
-                tile = device.tiles_map[coordinate][f'CLB_{direction}']
-                if not tile:
-                    return None
-                #else:
-                    #tile = tile.pop().name
-
-                port = f'CLE_CLE_{self.get_slice_type(tile)}_SITE_0_{self.get_port(node)}'
-
-            DLOC_node = f'{tile}/{port}'
-            nodes_dict[node] = DLOC_node
-
-        for edge in self.G.edges():
-            DLOC_edge = (nodes_dict[edge[0]], nodes_dict[edge[1]])
-            if self.is_wire(DLOC_edge):
-                if DLOC_edge not in device.wires_dict[self.get_tile(DLOC_edge[0])]:
-                    return None
-
-
-            label = self.G.get_edge_data(*edge)['path_type']
-            G.add_edge(nodes_dict[edge[0]], nodes_dict[edge[1]], path_type=label)
-
-        return G
-
-    @staticmethod
-    def is_pip(edge):
-        if RLOC.get_tile(edge[0]) == RLOC.get_tile(edge[1]):
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def is_wire(edge):
-        if RLOC.get_tile(edge[0]) != RLOC.get_tile(edge[1]):
-            return True
-        else:
-            return False
-
     def get_RLOC_coord(self, tile, origin):
         rx = self.get_x_coord(tile) - self.get_x_coord(origin)
         ry = self.get_y_coord(tile) - self.get_y_coord(origin)
@@ -124,6 +82,19 @@ class RLOC:
 
         return DLOC_coord
 
+    @staticmethod
+    def is_pip(edge):
+        if RLOC.get_tile(edge[0]) == RLOC.get_tile(edge[1]):
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def is_wire(edge):
+        if RLOC.get_tile(edge[0]) != RLOC.get_tile(edge[1]):
+            return True
+        else:
+            return False
     @staticmethod
     def get_direction(clb_node):
         return clb_node.split('_')[1]
@@ -195,6 +166,8 @@ class DLOC():
                 if neigh:
                     neigh = neigh[0]
                     MUX_flag = neigh.endswith('MUX')
+                else:
+                    MUX_flag = False
 
                 LUT_key = Node(DLOC_node).bel_key
                 N = 2 if (DLOC_node[-1] == 6 or not GM.LUT_Dual or MUX_flag) else 1
@@ -367,7 +340,6 @@ class DLOC():
                     f'set_property FIXED_ROUTE {self1.routing_constraint} [get_nets {RouteThruNetName}]\n')
 
         return constraints
-
 
     @property
     def routing_constraint(self):

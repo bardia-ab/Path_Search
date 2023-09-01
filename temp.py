@@ -35,7 +35,7 @@ queue = dev.reconstruct_device(l, coord)
 l_queue = len(queue)
 c = 0
 N_TC = 0
-pbar = trange(l_queue)
+pbar = tqdm(total=l_queue)
 if l > 1:
     files, last_TC = recon.sort_TCs(l, coord)
 
@@ -68,7 +68,7 @@ while queue:
     TC = Configuration(dev)
     TC.remove_route_thrus(coord)
 
-    '''if TC_idx == 75:
+    '''if TC_idx == 0:
         TC = load_data(os.path.join(GM.store_path, 'iter1'), f'TC{TC_idx}.data')
         #TC.CD = {'W_T': None, 'W_B': None, 'E_T': None, 'E_B': None}
         dev.G = TC.G_dev.copy()

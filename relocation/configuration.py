@@ -121,6 +121,9 @@ class Configuration:
                 if subLUT[0][-1] == '6':
                     self.blocked_LUTs.add(f'{tile}/{bel}5LUT')
 
+                if subLUT[-1] == 'MUX':
+                    self.blocked_LUTs.add(f'{tile}/{bel}5LUT')
+
                 if i == 1:
                     FF1 = subLUT[0][:-1] + 'Q'
                     FF2 = subLUT[0][:-1] + 'Q2'

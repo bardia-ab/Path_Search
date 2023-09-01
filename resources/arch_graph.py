@@ -92,6 +92,7 @@ class Arch:
         partial_LUTs_i6 = {f'{self.get_tile(key)}/CLE_CLE_{self.get_slice_type(key)}_SITE_0_{self.get_port(key)[0]}6'
                          for key in partial_LUTs}
         TC.block_nodes = full_LUTs_ins.union(partial_LUTs_i6)
+        TC.reconst_block_nodes.update(full_LUTs_ins.union(partial_LUTs_i6))
         TC.G.remove_nodes_from(full_LUTs_ins.union(partial_LUTs_i6))
 
         return LUTs

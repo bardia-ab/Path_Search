@@ -19,6 +19,7 @@ class Configuration():
         self.G                      = copy.deepcopy(device.G)
         self.G_TC                   = nx.DiGraph()
         self._block_nodes           = set()
+        self.reconst_block_nodes    = set()
         self._block_edges           = set()
         self.FFs                    = device.gen_FFs(TC_total)
         self.LUTs                   = device.gen_LUTs(self, TC_total)
@@ -34,6 +35,7 @@ class Configuration():
             #blocked_i6 = {LUT_in[:-1] + '6' for LUT_in in blocked_LUT_ins}
             #blocked_nodes.update(blocked_i6)
             self.block_nodes = blocked_nodes
+            self.reconst_block_nodes.update(blocked_nodes)
             self.G.remove_nodes_from(blocked_nodes)
             self.CD = TC_total.CD.copy()
             for group, function in self.CD.items():
@@ -129,6 +131,9 @@ class Configuration():
 
     def add_edges(self, *edges, device=None, weight=None):
         for edge in edges:
+            if {edge[0], edge[1]} & self.reconst_block_nodes:
+                continue
+
             if edge[1] in self._block_nodes:
                 continue
 
@@ -1345,7 +1350,7 @@ class Configuration():
             if route_thru_flag:
                 clb_node = Node(neigh_pip_v) if neigh_pip_v.startswith('CLE') else Node(pred_pip_u)
                 forbiden_srcs = {node for node in self.G.neighbors('s')
-                                 if get_tile(node).tile == clb_node.tile and Node(node).bel == clb_node.bel}
+                                 if get_tile(node) == clb_node.tile and Node(node).bel == clb_node.bel}
                 block_nodes = block_nodes.union(forbiden_srcs)
 
             path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes, 'path_in')
