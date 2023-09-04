@@ -129,6 +129,23 @@ class Configuration:
                     FF2 = subLUT[0][:-1] + 'Q2'
                     self.invalid_source_FFs.update({FF1, FF2})
 
+    def get_LUT_capacity(self, LUT_key):
+        if LUT_key not in self.LUTs:
+            capacity = 2 if GM.LUT_Dual else 1
+        else:
+            usage = 0
+            for subLUT in self.LUTs[LUT_key]:
+                if subLUT[0][-1] == '6' or subLUT[-1] == 'MUX' or not GM.LUT_Dual:
+                    usage += 2
+                else:
+                    usage += 1
+
+            capacity = 2 - usage
+
+
+        return capacity
+
+
     @classmethod
     def sort_covered_pips(self, x_min, x_max, y_min, y_max):
         keys = []

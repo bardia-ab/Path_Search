@@ -51,6 +51,11 @@ def check_LUT_utel(TC):
 
         for function, LUT_ins in cut.LUTs_func_dict.items():
             for LUT_in in LUT_ins:
+                LUT_primitive = TC.get_LUTs(tile=LUT_in.tile, letter=LUT_in.bel)
+                if not LUT_primitive:
+                    breakpoint()
+                    return False
+
                 if muxed_node:
                     pred = Node(next(cut.G.predecessors(muxed_node)))
                     MUX_flag = pred.bel_group == LUT_in.bel_group and pred.bel == LUT_in.bel
@@ -58,12 +63,13 @@ def check_LUT_utel(TC):
                     MUX_flag = False
 
                 subLUT_usage = 2 if (LUT_in.is_i6 or not GM.LUT_Dual or MUX_flag) else 1
-                if LUT_in.bel_key not in LUTs_dict:
-                    LUTs_dict[LUT_in.bel_key] = subLUT_usage
+                key = (LUT_in.bel_key, len(LUT_primitive))
+                if key not in LUTs_dict:
+                    LUTs_dict[key] = subLUT_usage
                 else:
-                    LUTs_dict[LUT_in.bel_key] += subLUT_usage
+                    LUTs_dict[key] += subLUT_usage
 
-    over_utel_LUTs = {key for key in LUTs_dict if LUTs_dict[key] > 2}
+    over_utel_LUTs = {key for key in LUTs_dict if LUTs_dict[key] > key[1]}
     if over_utel_LUTs:
         breakpoint()
         return False
@@ -75,7 +81,7 @@ def check_DCUT_LUT_utel(TC):
     for key, subLUTs in TC.LUTs.items():
         LUTs_dict[key] = 0
         for subLUT in subLUTs:
-            usage = 2 if re.match(GM.LUT_in6_pattern, subLUT[0]) else 1
+            usage = 2 if re.match(GM.LUT_in6_pattern, subLUT[0]) or subLUT[-1] == 'MUX' or not GM.LUT_Dual else 1
             LUTs_dict[key] += usage
 
     invalid_keys= {k:TC.LUTs[k] for k,v in LUTs_dict.items() if v > 2}

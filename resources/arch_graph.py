@@ -91,9 +91,11 @@ class Arch:
         full_LUTs_ins = {f'{self.get_tile(key)}/CLE_CLE_{self.get_slice_type(key)}_SITE_0_{self.get_port(key)[0]}{i}' for key in full_LUTs for i in range(1, 7)}
         partial_LUTs_i6 = {f'{self.get_tile(key)}/CLE_CLE_{self.get_slice_type(key)}_SITE_0_{self.get_port(key)[0]}6'
                          for key in partial_LUTs}
-        TC.block_nodes = full_LUTs_ins.union(partial_LUTs_i6)
-        TC.reconst_block_nodes.update(full_LUTs_ins.union(partial_LUTs_i6))
-        TC.G.remove_nodes_from(full_LUTs_ins.union(partial_LUTs_i6))
+        partial_LUTs_mux = {f'{self.get_tile(key)}/CLE_CLE_{self.get_slice_type(key)}_SITE_0_{self.get_port(key)[0]}MUX' for key in partial_LUTs}
+        in_graph_blocked_nodes = set(self.G) & full_LUTs_ins.union(partial_LUTs_i6).union(partial_LUTs_mux)
+        TC.block_nodes = in_graph_blocked_nodes
+        TC.reconst_block_nodes.update(in_graph_blocked_nodes)
+        TC.G.remove_nodes_from(in_graph_blocked_nodes)
 
         return LUTs
 

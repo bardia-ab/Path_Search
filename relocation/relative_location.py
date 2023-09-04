@@ -171,11 +171,9 @@ class DLOC():
 
                 LUT_key = Node(DLOC_node).bel_key
                 N = 2 if (DLOC_node[-1] == 6 or not GM.LUT_Dual or MUX_flag) else 1
-                if LUT_key in TC.LUTs:
-                    curr_usage = sum([2 if re.match(GM.LUT_in6_pattern, sub[0]) else 1 for sub in TC.LUTs[LUT_key]])
-                    if (2 - curr_usage) < N:
-                        self.reason = 'LUT over utelization'
-                        return None     #LUT over utelization
+                if TC.get_LUT_capacity(LUT_key) < N:
+                    self.reason = 'LUT over utelization'
+                    return None     #LUT over utelization
 
             nodes_dict[node] = DLOC_node
 

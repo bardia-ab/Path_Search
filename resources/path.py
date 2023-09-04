@@ -118,33 +118,31 @@ class Path:
         else:
             LUTs_func_dict = self.LUTs_dict()
 
-        try:
-            for function, LUT_ins in LUTs_func_dict.items():
-                for LUT_in in LUT_ins:
-                    if muxed_node:
-                        muxed_node_idx = self.str_nodes().index(muxed_node)
-                        pred = Node(self.str_nodes()[muxed_node_idx - 1])
-                        MUX_flag = pred.bel_group == LUT_in.bel_group and pred.bel == LUT_in.bel
-                    else:
-                        MUX_flag = False
-
-                    required_subLUTs = 2 if (LUT_in.is_i6 or not GM.LUT_Dual or MUX_flag) else 1
-                    key = (LUT_in.tile, LUT_in.bel)
-                    if key not in usage_dct:
-                        usage_dct[key] = required_subLUTs
-                    else:
-                        usage_dct[key] += required_subLUTs
-        except:
-            print('******1')
-
-        try:
-            for key in usage_dct:
-                free_subLUTs = TC.get_LUTs(tile=key[0], letter=key[1], usage='free')
-                if usage_dct[key] > len(free_subLUTs):
+        for function, LUT_ins in LUTs_func_dict.items():
+            for LUT_in in LUT_ins:
+                if not TC.get_LUTs(tile=LUT_in.tile, letter=LUT_in.bel):
                     result = False
-                    break
-        except:
-            print('******2')
+                    return result
+
+                if muxed_node:
+                    muxed_node_idx = self.str_nodes().index(muxed_node)
+                    pred = Node(self.str_nodes()[muxed_node_idx - 1])
+                    MUX_flag = pred.bel_group == LUT_in.bel_group and pred.bel == LUT_in.bel
+                else:
+                    MUX_flag = False
+
+                required_subLUTs = 2 if (LUT_in.is_i6 or not GM.LUT_Dual or MUX_flag) else 1
+                key = (LUT_in.tile, LUT_in.bel)
+                if key not in usage_dct:
+                    usage_dct[key] = required_subLUTs
+                else:
+                    usage_dct[key] += required_subLUTs
+
+        for key in usage_dct:
+            free_subLUTs = TC.get_LUTs(tile=key[0], letter=key[1], usage='free')
+            if usage_dct[key] > len(free_subLUTs):
+                result = False
+                break
 
         return result
 

@@ -47,8 +47,8 @@ for idx, file in enumerate(files):
 
         D_CUT = DLOC(device, TC, R_CUT, origin)
         if D_CUT.G is None:
-            #breakpoint()
-            continue
+            breakpoint()
+            #continue
 
         TC.add_DLOC_CUT(D_CUT.G)
         R_CUT.origins.add(origin)

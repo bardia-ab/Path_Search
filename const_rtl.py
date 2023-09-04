@@ -26,10 +26,10 @@ TC_files = [file for file in os.listdir(TCs_path) if file.startswith('TC')]
 TC_files.sort(key=lambda x: int(re.findall('\d+', x)[0]))
 #create_folder(os.path.join(GM.Data_path, 'Vivado_Sources'))
 #########################
-for i in range(90, 192):
+'''for i in range(90, 192):
     const.gen_rtl(f'TC{i}.data', TCs_path, N_Parallel, name_prefix, slices_dict)
-    print(i)
-#Parallel(n_jobs=-1)(delayed(const.gen_rtl)(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict) for TC_file in TC_files)
+    print(i)'''
+Parallel(n_jobs=-1)(delayed(const.gen_rtl)(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict) for TC_file in TC_files)
 '''pbar = tqdm(total=len(TC_files))
 for TC_file in TC_files:
     pbar.set_description(f'{TC_file}')

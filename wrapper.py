@@ -4,12 +4,17 @@ from relocation.arch_graph import Arch
 
 device = Arch('ZCU9')
 #coords = ['X46Y90', 'X45Y90', 'X44Y90']
-coords = ['X45Y90', 'X44Y90']
+coords = ['X44Y90']
 for coord in coords:
     #commands = [f'python3 Compressed_Graph.py {coord}', f'python3 temp.py {coord}', f'python3 Relocate_CUTs.py {coord}']
     commands = [f'python3 temp.py {coord}', f'python3 Relocate_CUTs.py {coord}']
     for command in commands:
-        os.system(command)
+        try:
+            os.system(command)
+        except:
+            raise ValueError
+        breakpoint()
+
         time.sleep(5)
 
 remainig_pips_dict = device.get_remaining_pips_dict()
@@ -21,7 +26,12 @@ while remainig_pips_dict:
     commands = [f'python3 Compressed_Graph.py {coord}', f'python3 temp.py {coord}', f'python3 Relocate_CUTs.py {coord}']
     for command in commands:
         pbar.set_description(command)
-        os.system(command)
+        try:
+            os.system(command)
+        except:
+            raise ValueError
+        breakpoint()
+
         time.sleep(5)
 
     remainig_pips_dict = device.get_remaining_pips_dict()

@@ -31,6 +31,7 @@ class Configuration():
         self.assign_source_sink()
         if TC_total:
             blocked_nodes = {f'{tile}/{port}' for tile, ports in TC_total.used_nodes_dict.items() for port in ports}
+            blocked_nodes = set(self.G) & blocked_nodes
             #blocked_LUT_ins = set(filter(lambda x: re.match(GM.LUT_in_pattern, x), blocked_nodes))
             #blocked_i6 = {LUT_in[:-1] + '6' for LUT_in in blocked_LUT_ins}
             #blocked_nodes.update(blocked_i6)
