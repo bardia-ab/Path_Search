@@ -1,15 +1,18 @@
 import os, time, schedule
+import Global_Module as GM
+from Functions import create_folder
 
 def job():
-    os.system(f'python3 Relocate_CUTs.py X46Y90')
-    coords = {'X45Y90', 'X44Y90'}
-    for coord in coords:
-        commands = [f'python3 Compressed_Graph.py {coord}', f'python3 temp.py {coord}', f'python3 Relocate_CUTs.py {coord}']
-        for command in commands:
-            os.system(command)
-            time.sleep(10)
+    create_folder(os.path.join(GM.Data_path, 'Bitstreams'))
+    create_folder(os.path.join(GM.Data_path, 'DCPs'))
+    N_TCs = len(os.listdir(os.path.join(GM.DLOC_path, 'iter1')))
+    os.system(f'python3 const_rtl.py')
+    os.system(f'vivado -mode batch -source /home/bardia/Downloads/gen_bit.tcl -tclargs "{N_TCs}"')
+    files = filter(lambda x: x.startswith('vivado'), os.listdir(os.getcwd()))
+    for file in files:
+        os.remove(file)
 
-schedule.every().day.at('23:00').do(job)
+schedule.every().friday.at('23:30').do(job)
 
 while True:
     schedule.run_pending()

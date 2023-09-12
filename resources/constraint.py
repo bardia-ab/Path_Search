@@ -466,7 +466,11 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
     cell_constraints = Cell.get_cell_constraints()
 
     with open(os.path.join(src_path, 'stats.txt'), 'w+') as file:
-        file.write(f'N_Segments = {N_Segments - 1}\n')
+        if N_Partial > 0:
+            file.write(f'N_Segments = {N_Segments - 1}\n')
+        else:
+            file.write(f'N_Segments = {N_Segments}\n')
+
         file.write(f'N_Partial = {N_Partial}')
 
     with open(os.path.join(src_path, 'physical_constraints.xdc'), 'w+') as file:
@@ -475,6 +479,7 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
         file.writelines(routing_constraints)
 
     VHDL_file.print(os.path.join(src_path, 'CUTs.vhd'))
+    print(f'TC{TC_idx} is done.')
 
 class Cell:
     cells = []

@@ -16,8 +16,8 @@ import resources.validation as vd
 from resources.node import Node
 from itertools import chain
 
-#TCs_path = os.path.join(GM.DLOC_path, 'iter45')
-TCs_path = os.path.join(GM.Data_path, 'iter53')
+TCs_path = os.path.join(GM.DLOC_path, 'iter5')
+#TCs_path = os.path.join(GM.Data_path, 'iter53')
 TC_files = [file for file in os.listdir(TCs_path) if file.startswith('TC')]
 #########################
 '''invalid_TCs = []
@@ -111,11 +111,11 @@ for idx, TC_file in enumerate(TC_files):
 
     pbar.update(1)'''
 
-#invalid_D_CUTs = list(chain(*Parallel(n_jobs=-1)(delayed(vd.check_clb_mux)(TCs_path, TC_file) for TC_file in TC_files)))
-#print(len(invalid_D_CUTs))
+invalid_D_CUTs = list(chain(*Parallel(n_jobs=-1)(delayed(vd.check_clb_mux)(TCs_path, TC_file) for TC_file in TC_files)))
+print(len(invalid_D_CUTs))
 #invalid_D_CUTs_dict = vd.get_TC_DCUT_dict(invalid_D_CUTs)
 #Parallel(n_jobs=-1)(delayed(vd.remove_invalid_D_CUTs)(TCs_path, TC_file, D_CUTs) for TC_file, D_CUTs in invalid_D_CUTs_dict.items())
-covered_pips = list(chain(*Parallel(n_jobs=-1)(delayed(vd.get_covered_pips)(TCs_path, TC_file) for TC_file in TC_files)))
+#covered_pips = list(chain(*Parallel(n_jobs=-1)(delayed(vd.get_covered_pips)(TCs_path, TC_file) for TC_file in TC_files)))
 #a = {(el[0], f'CUT{el[1].index}') for el in invalid_D_CUTs}
 
 breakpoint()

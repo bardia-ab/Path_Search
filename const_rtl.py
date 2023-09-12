@@ -20,11 +20,19 @@ N_Parallel = 50
 name_prefix = 'design_1_i/top_0/U0/Inst/CUTs_Inst/CUT_{}/{}'
 slices_dict = load_data(GM.load_path, 'clb_site_dict2.data')
 ##############################################################
-#TCs_path = os.path.join(GM.DLOC_path, 'iter45')
-TCs_path = os.path.join(GM.Data_path, 'iter53')
+folders = [folder for folder in os.listdir(GM.DLOC_path)]
+folders.sort(key=lambda x: int(re.findall('\d+', x)[0]))
+while 1:
+    if len(os.listdir(os.path.join(GM.DLOC_path, folders[-1]))) == len(os.listdir(os.path.join(GM.DLOC_path, folders[0]))):
+        TCs_path = os.path.join(GM.DLOC_path, folders[-1])
+        break
+    else:
+        time.sleep(5*60)
+
+#TCs_path = os.path.join(GM.Data_path, 'iter53')
 TC_files = [file for file in os.listdir(TCs_path) if file.startswith('TC')]
 TC_files.sort(key=lambda x: int(re.findall('\d+', x)[0]))
-#create_folder(os.path.join(GM.Data_path, 'Vivado_Sources'))
+create_folder(os.path.join(GM.Data_path, 'Vivado_Sources'))
 #########################
 '''for i in range(90, 192):
     const.gen_rtl(f'TC{i}.data', TCs_path, N_Parallel, name_prefix, slices_dict)
@@ -36,6 +44,4 @@ for TC_file in TC_files:
     const.gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict)
     pbar.update(1)'''
 
-#print(f'N_segments: {N_Segments - 1}')
-#print(f'N_Partial: {N_Partial}')
 print('--- %s seconds ---' %(time.time() - start_time))
