@@ -30,6 +30,9 @@ while 1:
         time.sleep(5*60)
 
 #TCs_path = os.path.join(GM.Data_path, 'iter53')
+with open(os.path.join(GM.Data_path, 'TCs_path.txt'), 'w+') as file:
+    file.write(TCs_path)
+
 TC_files = [file for file in os.listdir(TCs_path) if file.startswith('TC')]
 TC_files.sort(key=lambda x: int(re.findall('\d+', x)[0]))
 create_folder(os.path.join(GM.Data_path, 'Vivado_Sources'))

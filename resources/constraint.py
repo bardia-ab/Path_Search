@@ -407,7 +407,7 @@ def get_FFs_CTRL_pips(device, FFs):
 
     return pips
 
-def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
+def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict, even_odd=None):
     Cell.cells = []
     VHDL_file = VHDL('CUTs', 'behavioral')
     VHDL_file.add_package('ieee', 'std_logic_1164')
@@ -424,10 +424,22 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
     VHDL_file.add_assignment('o_Error', 'w_Error')
     ########################################################
     TC_idx = int(re.search('\d+', TC_file)[0])
-    src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}')
-    create_folder(src_path)
+    #src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}')
+    #create_folder(src_path)
     TC = load_data(TCs_path, TC_file)
-    D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs]
+    if even_odd == 'even':
+        src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}_even')
+        create_folder(src_path)
+        D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[1]) % 2 == 0]
+    elif even_odd == 'odd':
+        src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}_odd')
+        create_folder(src_path)
+        D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[1]) % 2 == 1]
+    else:
+        src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}')
+        create_folder(src_path)
+        D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs]
+
     D_CUTs.sort(key=lambda x: x.index * 10000 + DLOC.get_x_coord(x.origin) * 1000 + DLOC.get_y_coord(x.origin))
     ########################################################
     N_Segments = math.ceil(len(D_CUTs) / N_Parallel)
@@ -480,6 +492,7 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict):
 
     VHDL_file.print(os.path.join(src_path, 'CUTs.vhd'))
     print(f'TC{TC_idx} is done.')
+
 
 class Cell:
     cells = []
