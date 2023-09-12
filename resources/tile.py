@@ -55,7 +55,7 @@ class Tile:
         nodes = set()
         for node in tile_nodes:
             Node1 = Node(f'{self.name}/{node}')
-            Node1.mode = Node1.set_INT_node_mode(G)
+            Node1.mode = Node1.get_INT_node_mode(G)
             nodes.add(Node1)
 
         return nodes

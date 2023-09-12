@@ -2,14 +2,22 @@ import re
 import Global_Module as GM
 
 class Node:
+    __slots__ = ('name', )
+
     def __init__(self, name):
         self.name = name
 
     def __repr__(self):
         return self.name
 
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
+
     @property
-    def exact_tile_type(self):
+    def tile_prefix(self):
         end_idx = re.search('_X-*\d+Y-*\d+', self.tile).regs[0][0]
         return self.tile[:end_idx]
 
@@ -70,7 +78,7 @@ class Node:
                 return 1
 
         if self.clb_node_type == 'LUT_in':
-            return self.name[-1]
+            return int(self.name[-1])
 
     @property
     def is_i6(self):
@@ -94,6 +102,17 @@ class Node:
         return group
 
     @property
+    def direction(self):
+        if self.tile_type == 'INT':
+            dir = 'Center'
+        elif self.name.startswith('CLEL_R'):
+            dir = 'E'
+        else:
+            dir = 'W'
+
+        return dir
+
+    @property
     def site_type(self):
         if self.tile_type == 'INT':
             return None
@@ -107,7 +126,15 @@ class Node:
         return re.findall('X-*\d+Y-*\d+', self.tile)[0]
 
     @property
-    def prefix(self):
+    def get_x_coord(self):
+        return int(re.findall('-*\d+', self.tile)[0])
+
+    @property
+    def get_y_coord(self):
+        return int(re.findall('-*\d+', self.tile)[1])
+
+    @property
+    def port_prefix(self):
         if self.tile_type == 'INT':
             return None
         else:
@@ -139,7 +166,7 @@ class Node:
         else:
             return None
 
-    def set_INT_node_mode(self, G):
+    def get_INT_node_mode(self, G):
         # Modes: 1- in 2- out 3- mid
         pred_tiles = {self.__class__(pred).tile for pred in G.predecessors(self.name)}
         neigh_tiles = {self.__class__(neigh).tile for neigh in G.neighbors(self.name)}
@@ -154,12 +181,3 @@ class Node:
             mode = 'out'
 
         return mode
-
-
-    @staticmethod
-    def get_x_coord(tile):
-        return int(re.findall('-*\d+', tile)[0])
-
-    @staticmethod
-    def get_y_coord(tile):
-        return int(re.findall('-*\d+', tile)[1])

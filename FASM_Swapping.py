@@ -51,7 +51,7 @@ for pip in occupied_pips:
 
 occupied_pips = occupied_pips - clear_pips
 occupied_nodes = {node for pip in occupied_pips for node in pip if node in TC.G}
-occupied_nodes = {node for node in occupied_nodes if Node(node).set_INT_node_mode(dev.G) != 'in'}
+occupied_nodes = {node for node in occupied_nodes if Node(node).get_INT_node_mode(dev.G) != 'in'}
 TC.block_nodes = occupied_nodes
 TC.G.remove_edges_from(occupied_pips)
 TC.G.add_edges_from(clear_pips)
