@@ -430,11 +430,11 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict, even_odd=No
     if even_odd == 'even':
         src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}_even')
         create_folder(src_path)
-        D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[1]) % 2 == 0]
+        D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[0]) % 2 == 0]
     elif even_odd == 'odd':
         src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}_odd')
         create_folder(src_path)
-        D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[1]) % 2 == 1]
+        D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[0]) % 2 == 1]
     else:
         src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}')
         create_folder(src_path)

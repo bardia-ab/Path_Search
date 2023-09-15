@@ -1107,7 +1107,7 @@ class Configuration():
         return queue
 
     def fill_3(self, dev, queue, coord, pbar, TC_idx, c):
-        if not self.CUTs and self.block_nodes and coord == 'X46Y90':
+        if not self.CUTs and self.block_nodes and coord == 'X28Y329':
             breakpoint()
 
         int_tile = f'INT_{coord}'

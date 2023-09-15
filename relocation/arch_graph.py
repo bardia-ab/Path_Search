@@ -51,9 +51,10 @@ class Arch:
 
     def sort_INTs(self, INTs, tile):
         x_coord = self.get_x_coord(tile)
+        y_coord = self.get_y_coord(tile)
         origin_tile = self.get_tiles(name=tile).pop()
         INTs.sort(key=lambda x: self.get_x_coord(x.name))
-        INTs = sorted(INTs, key= lambda x: abs(x_coord - self.get_x_coord(x.name)))
+        INTs = sorted(INTs, key= lambda x: 1000 * abs(x_coord - self.get_x_coord(x.name)) + abs(y_coord - self.get_y_coord(x.name)))
         INTs.remove(origin_tile)
         INTs.insert(0, origin_tile)
 

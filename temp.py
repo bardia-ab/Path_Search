@@ -20,7 +20,7 @@ start_time = time.time()
 coord = sys.argv[1]
 #coord = 'X45Y90'
 tile = f'INT_{coord}'
-l = 1 if coord == 'X46Y90' else len(os.listdir(GM.store_path)) + 1
+l = 1 if coord == 'X28Y329' else len(os.listdir(GM.store_path)) + 1
 store_path = os.path.join(GM.store_path, f'iter{l}')
 create_folder(store_path)
 #################################################
