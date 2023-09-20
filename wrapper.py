@@ -3,8 +3,8 @@ from tqdm import tqdm
 from relocation.arch_graph import Arch
 
 device = Arch('ZCU9')
-coords = ['X28Y329', 'X27Y329', 'X26Y329']
-#coords = []
+#coords = ['X28Y329', 'X27Y329', 'X26Y329']
+coords = []
 for coord in coords:
     #commands = [f'python3 Compressed_Graph.py {coord}', f'python3 temp.py {coord}', f'python3 Relocate_CUTs.py {coord}']
     commands = [f'python3 Compressed_Graph.py {coord}', f'python3 temp.py {coord}', f'python3 Relocate_CUTs.py {coord}']

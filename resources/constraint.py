@@ -407,7 +407,7 @@ def get_FFs_CTRL_pips(device, FFs):
 
     return pips
 
-def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict, even_odd=None):
+def gen_rtl(TC_file, TCs_path, store_path, N_Parallel, name_prefix, slices_dict, even_odd=None):
     Cell.cells = []
     VHDL_file = VHDL('CUTs', 'behavioral')
     VHDL_file.add_package('ieee', 'std_logic_1164')
@@ -428,15 +428,15 @@ def gen_rtl(TC_file, TCs_path, N_Parallel, name_prefix, slices_dict, even_odd=No
     #create_folder(src_path)
     TC = load_data(TCs_path, TC_file)
     if even_odd == 'even':
-        src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}_even')
+        src_path = os.path.join(store_path, f'Vivado_Sources/TC{TC_idx}_even')
         create_folder(src_path)
         D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[0]) % 2 == 0]
     elif even_odd == 'odd':
-        src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}_odd')
+        src_path = os.path.join(store_path, f'Vivado_Sources/TC{TC_idx}_odd')
         create_folder(src_path)
         D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[0]) % 2 == 1]
     else:
-        src_path = os.path.join(GM.Data_path, f'Vivado_Sources/TC{TC_idx}')
+        src_path = os.path.join(store_path, f'Vivado_Sources/TC{TC_idx}')
         create_folder(src_path)
         D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs]
 

@@ -18,7 +18,7 @@ from tqdm import tqdm, trange
 
 start_time = time.time()
 coord = sys.argv[1]
-#coord = 'X45Y90'
+#coord = 'X22Y310'
 tile = f'INT_{coord}'
 l = 1 if coord == 'X28Y329' else len(os.listdir(GM.store_path)) + 1
 store_path = os.path.join(GM.store_path, f'iter{l}')
@@ -53,12 +53,11 @@ if l > 1:
 
         TC.queue = queue.copy()
         TC.G_dev = dev.G.copy()
-        store_data(store_path, f'TC{TC_idx}.data', TC)
-
+        #store_data(store_path, f'TC{TC_idx}.data', TC)
         N_TC += 1
         if TC.CUTs:
             vd.check_LUT_utel(TC)
-
+            store_data(store_path, f'TC{TC_idx}.data', TC)
 
     TC_idx = len(files)
 else:
@@ -89,10 +88,11 @@ while queue:
 
     TC.queue = queue.copy()
     TC.G_dev = dev.G.copy()
-    store_data(store_path, f'TC{TC_idx}.data', TC)
+    #store_data(store_path, f'TC{TC_idx}.data', TC)
 
     if TC.CUTs:
         vd.check_LUT_utel(TC)
+        store_data(store_path, f'TC{TC_idx}.data', TC)
         TC_idx += 1
     else:
         break

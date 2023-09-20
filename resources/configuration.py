@@ -1287,6 +1287,13 @@ class Configuration():
 
         return {node.name for node in global_nodes}
 
+    def get_bidir_pip(self, node):
+        other_node =  (set(self.G.neighbors(node)) & set(self.G.predecessors(node))) - self.block_nodes
+        if other_node:
+            return {(node, other_node.pop())}
+        else:
+            return set()
+
     def get_main_path(self, device, queue):
         try:
             path_out1 = path_finder(self.G, 'out_node', 't', weight='weight', dummy_nodes=['s', 't', 'out_node', 's2', 't2'],
@@ -1295,6 +1302,8 @@ class Configuration():
             self.remove_CUT(device)
             return  None
 
+        bidir_pip = self.get_bidir_pip(path_out1[0])
+        self.G.remove_edges_from(bidir_pip)
         visited_preds = {pip[0] for pip in self.G.in_edges(path_out1[0]) if pip not in queue}
         try:
             #bidirectional pips could be problematic, so add set(self.G.neighbors(path_out1[0])) to block_nodes
@@ -1304,6 +1313,7 @@ class Configuration():
         except:
             self.G.remove_edge('out_node', path_out1[0])
             self.remove_CUT(device)
+            self.add_edges(*bidir_pip, device=device)
             return  None
 
         pip = tuple(path_in1[-2:])
@@ -1315,6 +1325,7 @@ class Configuration():
         if len(path_out1) < len(path_in1):
             path_out = self.get_path(device, pip[1], 't', 'weight', self.block_nodes, 'path_out')
             if not path_out:
+                self.add_edges(*bidir_pip, device=device)
                 return  None
 
             self.decide_long_pips(device, pip)
@@ -1338,8 +1349,10 @@ class Configuration():
                     self.add_path(device, path_out)
                     path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes - unblock_nodes, 'path_in')
                     if not path_in:
+                        self.add_edges(*bidir_pip, device=device)
                         return  None
                 else:
+                    self.add_edges(*bidir_pip, device=device)
                     return  None
         else:
             if re.match(GM.LUT_in6_pattern, neigh_pip_v):
@@ -1356,6 +1369,7 @@ class Configuration():
 
             path_in = self.get_path(device, 's', pip[0], 'weight', block_nodes, 'path_in')
             if not path_in:
+                self.add_edges(*bidir_pip, device=device)
                 return  None
 
             self.decide_long_pips(device, pip)
@@ -1368,9 +1382,10 @@ class Configuration():
                     self.add_path(device, path_in)
                     path_out = self.get_path(device, pip[1], 't', 'weight', self.block_nodes - unblock_nodes, 'path_out')
                     if not path_out:
+                        self.add_edges(*bidir_pip, device=device)
                         return  None
                 else:
+                    self.add_edges(*bidir_pip, device=device)
                     return  None
-
 
         return pip

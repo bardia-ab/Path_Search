@@ -33,8 +33,10 @@ for idx, file in enumerate(files):
     TC_idx = int(re.search('\d+', file)[0])
     if l == 1:
         TC = Configuration()
-    else:
+    elif f'TC{TC_idx}.data' in os.listdir(os.path.join(GM.DLOC_path, f'iter{l-1}')):
         TC = load_data(os.path.join(GM.DLOC_path, f'iter{l-1}'), f'TC{TC_idx}.data')
+    else:
+        TC = Configuration()
 
     conf = load_data(store_path, file)
 
