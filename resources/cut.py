@@ -1,74 +1,68 @@
-from resources.path import *
+from resources.node import Node
+#from resources.configuration2 import Configuration
+from resources.path2 import Path, PlainPath
+from itertools import product
 import networkx as nx
 
 class CUT:
-
+    __slots__ = ('_pip', 'origin', 'paths', '_G', 'FFs', 'subLUTs')
     def __init__(self, origin, pip=None):
         self.pip            = pip
         self.origin         = origin
-        self.FFs_set        = set()
         self.paths          = []
-        self.LUTs_func_dict = {}
+        self._G             = nx.DiGraph()
+        self.FFs            = set()
+        self.subLUTs        = set()
 
-    def get_paths(self):
-        paths = []
-        source = [node for node in self.G if self.G.in_degree(node) == 0][0]
-        sinks = [node for node in self.G if self.G.out_degree(node) == 0]
+    def add_path(self, path: Path, TC):
+        self.paths.append(path)
+        self.FFs.update(path.FFs())
+        self.subLUTs.update(path.subLUTs(TC))
 
-        for sink in sinks:
-            paths.append(nx.shortest_path(self.G, source, sink, weight='weight'))
-
-        return paths
-
-    def update_LUTs(self, LUTs_func_dict):
-        for function, nodes in LUTs_func_dict.items():
-            extend_dict(self.LUTs_func_dict, function, nodes, value_type='set')
+    def get_path(self, path_type) -> Path:
+        return next(path for path in self.paths if path.path_type == path_type)
 
     @property
-    def main_path(self):
-        path_in = {path for path in self.paths if path.path_type == 'path_in'}.pop()
-        path_out = {path for path in self.paths if path.path_type == 'path_out'}.pop()
-        main_path = path_in + path_out
-        main_path.edges.add(self.pip)
-        main_path.path_type = 'main_path'
+    def pip(self):
+        return self._pip
 
-        return main_path
+    @pip.setter
+    def pip(self, edge):
+        if edge is not None and type(edge[0]) == str:
+            edge = (Node(edge[0]), Node(edge[1]))
 
-    @property
-    def not_path(self):
-        src = {node for node in self.G if self.G.in_degree(node) == 0}.pop()
-        path = nx.shortest_path(self.G, src, self.paths[-1][-1].name)
-        #nodes = [node for node in self.nodes if node.name in path]
-        #nodes.sort(key=lambda x: path.index(x.name))
-        #not_path = Path(nodes=path, path_type='not')
-
-        return path
+        self._pip = edge
 
     @property
-    def nodes(self):
-        nodes = set()
-        for path in self.paths:
-            nodes.update(path.nodes)
-
-        return nodes
+    def source(self) -> Node:
+        return next(node for node in self.G if self.G.in_degree(node) == 0)
 
     @property
-    def covered_pips(self):
+    def sinks(self) -> {Node}:
+        return {node for node in self.G if self.G.out_degree(node) == 0}
+
+    @property
+    def main_path(self) -> PlainPath:
+        return PlainPath(self.get_path('path_in').nodes + self.get_path('path_out').nodes)
+
+    @property
+    def not_path(self) -> PlainPath:
+        sink = self.get_path('not')[-1]
+        return PlainPath(nx.shortest_path(self.G, self.source, sink))
+
+    @property
+    def nodes(self) -> {Node}:
+        return {node for path in self.paths for node in path}
+
+    @property
+    def covered_pips(self) -> {(Node, Node)}:
         tile = f'INT_{self.origin}'
-        covered_pips = {self.pip.name}
-        paths = {path for path in self.paths if path.path_type in {'path_in', 'path_out'}}
-        for path in paths:
-            covered_pips.update({pip.name for pip in path.pips if pip.u_tile == tile})
-
-        return covered_pips
+        return {pip for pip in self.main_path.pips if pip[0].tile == tile}
 
     @property
     def G(self):
-        if '_G' not in self.__dict__:
-            self._G = nx.DiGraph()
-
         if self.pip:
-            self._G.add_edge(*self.pip.name)
+            self._G.add_edge(*self.pip)
 
         for path in self.paths:
             self._G.add_edges_from(path.edges)
@@ -79,7 +73,7 @@ class CUT:
     def RRG(self):
         RRG = nx.DiGraph()
         RRG.add_edges_from(self.G.edges())
-        wires_end = {edge[1] for edge in self.G.edges if CUT.get_tile(edge[0]) != CUT.get_tile(edge[1])}
+        wires_end = {edge[1] for edge in self.G.edges if edge[0].tile != edge[1].tile}
         for node in wires_end:
             new_edges = product(self.G.predecessors(node), self.G.neighbors(node))
             RRG.remove_node(node)
@@ -98,16 +92,16 @@ class CUT:
                     if node in branch_dct:
                         for nested_branch in branch_dct[node]:
                             branch_dct[key][b_idx][
-                                n_idx] += f" {{{' '.join(Node(node).port for node in nested_branch)}}}"
+                                n_idx] += f" {{{' '.join(node.port for node in nested_branch)}}}"
 
         if len(branch_dct[source]) > 1:
-            constraint = f"{Node(source).port}"
+            constraint = f"{source.port}"
             for branch in branch_dct[source][1:]:
-                constraint += f" {{{' '.join(Node(node).port for node in branch)}}}"
+                constraint += f" {{{' '.join(node.port for node in branch)}}}"
 
-            constraint += f" {' '.join(Node(node).port for node in branch_dct[source][0])}"
+            constraint += f" {' '.join(node.port for node in branch_dct[source][0])}"
         else:
-            constraint = f"{Node(source).port} {' '.join(Node(node).port for node in branch_dct[source][0])}"
+            constraint = f"{source.port} {' '.join(node.port for node in branch_dct[source][0])}"
 
         return f'{{{constraint}}}'
 
@@ -157,6 +151,11 @@ class CUT:
 
         return dict_name
 
-    @staticmethod
-    def get_tile(wire, delimiter='/'):
-        return wire.split(delimiter)[0]
+
+if __name__ == '__main__':
+    nodes = 'CLEM_X46Y90.CLE_CLE_M_SITE_0_AQ -> INT_X46Y90.LOGIC_OUTS_W14 -> INT_X46Y90.INT_NODE_IMUX_42_INT_OUT1 -> INT_X46Y90.BYPASS_W5 -> INT_X46Y90.INT_NODE_IMUX_48_INT_OUT0 -> INT_X46Y90.IMUX_W10 -> CLEM_X46Y90.CLE_CLE_M_SITE_0_A1'.replace(
+        '.', '/').split(' -> ')
+    p1 = Path(nodes=nodes)
+    cut = CUT('X46Y90', ('INT_X46Y90.LOGIC_OUTS_W14', 'INT_X46Y90.INT_NODE_IMUX_42_INT_OUT1'))
+    cut.add_path(p1, None)
+    print('hi')
