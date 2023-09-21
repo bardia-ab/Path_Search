@@ -2,6 +2,7 @@ import re
 from resources.node import Node
 from itertools import product
 from abc import ABC, abstractmethod
+import Global_Module as GM
 
 class Primitive(ABC):
     @abstractmethod
@@ -75,10 +76,10 @@ class Primitive(ABC):
 
 
 class FF(Primitive):
-    __slots__ = ('name', '_node')
-    def __init__(self, name):
+    __slots__ = ('_name', '_node')
+    def __init__(self, name, node=None):
         self.name   = name
-        self.node   = None
+        self.node   = node
 
     def __eq__(self, other):
         return type(self) == type(other) and self.name == other.name and self.node == other.node
@@ -158,16 +159,30 @@ class SubLUT_ABC(Primitive):
         pass
 
     @property
-    @abstractmethod
-    def capacity(self):
-        pass
+    def occupancy(self):
+        if not GM.LUT_Dual:
+            return 2
+        elif self.output is None:
+            return 1
+        else:
+            muxed_out_cond = self.output.clb_node_type == 'CLB_muxed'
+            i6_cond = any(map(lambda x: x.index == 6, self.inputs))
+            if muxed_out_cond or i6_cond:
+                return 2
+            else:
+                return 1
 
     def clear(self):
         self.inputs     = None
         self.output     = None
         self.func       = None
         self.usage      = 'free'
-        #self.cal_init()
+
+    def fill(self, inputs, output, func):
+        self.inputs = inputs
+        self.output = output
+        self.func   = func
+        self.usage  = 'used'
 
     def cal_init(self):
         entries = self.get_truth_table()
@@ -204,9 +219,6 @@ class SubLUT_5(SubLUT_ABC):
 
         self._output = outp
 
-    @property
-    def capacity(self):
-        return 1
 
 
 class SubLUT_6(SubLUT_ABC):
@@ -223,10 +235,6 @@ class SubLUT_6(SubLUT_ABC):
                 raise Exception(f'{self.name} cannot connect to {outp}')
 
         self._output = outp
-
-    @property
-    def capacity(self):
-        return 2
 
 
 class LUT(Primitive):
@@ -260,11 +268,25 @@ class LUT(Primitive):
     @subLUT.setter
     def subLUT(self, sublut: SubLUT_5 | SubLUT_6):
 
-        if sublut.capacity > self.capacity:
+        if sublut.occupancy > self.capacity:
             raise Exception(f'{sublut} cannot fit into {self}!')
         else:
             self._subLUT.append(sublut)
-            self.capacity -= sublut.capacity
+            self.capacity -= sublut.occupancy
+
+    def get_input(self, index):
+        if not(0 <= index <= 6):
+            raise ValueError(f' index: {index} is out of range!')
+
+        return f'{self.tile}/CLE_CLE_{self.site_type}_SITE_0_{self.letter}{index}'
+
+    def get_output(self, type):
+        if type == 'CLB_muxed':
+            return f'{self.tile}/CLE_CLE_{self.site_type}_SITE_0_{self.letter}MUX'
+        elif type == 'CLB_out':
+            return f'{self.tile}/CLE_CLE_{self.site_type}_SITE_0_{self.letter}_O'
+        else:
+            raise ValueError(f'LUT_output type: {type} is invalid!')
 
 
 if __name__ == '__main__':
