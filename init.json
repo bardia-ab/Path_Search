@@ -1,7 +1,7 @@
 {
   "Windows": {
               "root": "C:\\Users\\t26607bb\\Desktop\\graph_zcu9eg",
-              "Data_path": "C:\\Users\\t26607bb\\Desktop\\CPS_Project\\New Path Search\\Data"},
+              "Data_path": "C:\\Users\\t26607bb\\Desktop\\CPS_Project\\Path_Search\\Data"},
 
   "Linux": {
               "root": "/home/bardia/Desktop/bardia/Architecture Graph/ZCU9EG",
