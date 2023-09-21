@@ -1,27 +1,18 @@
-import heapq, os
-
-import Global_Module
-from resources.tile import *
+import os
+from resources.edge import Edge
 from resources.primitive import *
-from Functions import extend_dict, weight_function, load_data
+from Functions import extend_dict, load_data
+from router import weight_function
+import networkx as nx
 
 class Arch:
     def __init__(self, G):
-        self.G          = G
-        self.Init_tile_port_dict()
-        self.tiles      = set()
-        self.wires_dict = {}
-        self.init_tiles()
-        self.Init_tile_node_dicts()
+        self.G                  = G
+        self.pips_length_dict   = {}
+        #self.Init_tile_node_dicts()
         self.reform_cost()
         self.weight = weight_function(G, 'weight')
 
-    def init_tiles(self):
-        all_edges = {Edge(edge) for edge in self.G.edges()}
-        for tile, tile_nodes in self.tile_port_dict.items():
-            tile1 = Tile(tile, self.G, tile_nodes)
-            tile1.edges = set(filter(lambda x: re.search(tile1.name, f'{x.u} {x.v}'), all_edges))
-            self.tiles.add(tile1)
 
     def Init_tile_node_dicts(self):
         self.tile_dirc_dict = {}
@@ -44,11 +35,6 @@ class Arch:
                     else:
                         extend_dict(self.gnode_dict[key1], key2, value, value_type='set')
 
-    def Init_tile_port_dict(self):
-        self.tile_port_dict = {}
-        for node in self.G:
-            extend_dict(self.tile_port_dict, self.get_tile(node), self.get_port(node), value_type='set')
-
     def get_gnodes(self, node):
         gnodes = set()
         if node.startswith('INT'):
@@ -67,8 +53,9 @@ class Arch:
     def gen_FFs(self, TC_total=None):
         blocked_FFs = TC_total.FFs if TC_total else set()
         FFs = set()
-        for clb in self.get_tiles(type='CLB'):
-            for i in range(65, 73):
+        tiles = (node.tile for node in self.get_nodes() if node.tile_type == 'CLB')
+        for clb in tiles:
+            for i in range(ord('A'), ord('H') + 1):
                 FFs.add(f'{clb.name}/{chr(i)}FF')
                 FFs.add(f'{clb.name}/{chr(i)}FF2')
 
@@ -79,8 +66,9 @@ class Arch:
     def gen_LUTs(self, TC, TC_total=None):
         blocked_LUTs = TC_total.blocked_LUTs if TC_total else set()
         LUTs = set()
-        for clb in self.get_tiles(type='CLB'):
-            for i in range(65, 73):
+        tiles = (node.tile for node in self.get_nodes() if node.tile_type == 'CLB')
+        for clb in tiles:
+            for i in range(ord('A'), ord('H') + 1):
                 LUTs.add(f'{clb.name}/{chr(i)}5LUT')
                 LUTs.add(f'{clb.name}/{chr(i)}6LUT')
 
@@ -99,20 +87,8 @@ class Arch:
 
         return LUTs
 
-    def get_tiles(self, **attributes):
-        tiles = set()
-        for tile in self.tiles:
-            for attr in attributes:
-                if getattr(tile, attr) != attributes[attr]:
-                    break
-            else:
-                tiles.add(tile)
-
-
-        return tiles
-
     def get_nodes(self, **attributes):
-        all_nodes = {node for tile in self.tiles for node in tile.nodes}
+        all_nodes = (Node(node) for node in self.G)
         for k, v in attributes.items():
             nodes = set()
             for node in all_nodes:
@@ -123,9 +99,8 @@ class Arch:
 
         return all_nodes
 
-
     def get_edges(self, **attributes):
-        all_edges = {edge for tile in self.tiles for edge in tile.edges}
+        all_edges = (Edge(edge) for edge in self.G.edges)
         edges = set()
         for edge in all_edges:
             for attr in attributes:
@@ -135,70 +110,6 @@ class Arch:
                 edges.add(edge)
 
         return edges
-
-    def set_wires_dict(self, coord):
-        tile = 'INT_' + coord
-        for edge in self.G.edges():
-            if len(list(filter(lambda x: re.search(tile, x), edge))) != 2:
-                for node in edge:
-                    if re.search(tile, node):
-                        key = node
-
-                    if not re.search(tile, node):
-                        value = node
-
-                extend_dict(self.wires_dict, key, value)
-                extend_dict(self.wires_dict, value, key)
-
-    def get_wire(self, node):
-        if node in self.wires_dict:
-            return self.wires_dict[node]
-        else:
-            return None
-
-    def set_level(self, G, coord):
-        mid_back = set()
-        node_level = {}
-        int_tile = self.get_tiles(type='INT', coordinate=coord).pop()
-        queue = list(self.get_nodes(tile_type='INT', mode='in', coordinate=coord))
-        next_queue = set()
-        level = 0
-        while len(node_level) != len(int_tile.nodes):
-            level += 1
-            neighs = set()
-            for node in queue:
-                neighs.update(G.neighbors(node.name))
-                node_level[node.name] = level
-
-            for neigh in neighs:
-                neigh1 = self.get_nodes(name=neigh).pop()
-                if neigh1.tile != int_tile.name:
-                    continue
-                elif neigh1.name not in node_level:
-                    next_queue.add(neigh1)
-                else:
-                    mid_back.add(neigh1)
-
-            queue = list(next_queue).copy()
-            next_queue = set()
-
-        for node in int_tile.nodes:
-            node.level = node_level[node.name]
-
-        return mid_back
-
-    def get_clb_nodes(self, type):
-        all_nodes = {node for tile in self.tiles for node in tile.nodes}
-        if type == 'LUT_in':
-            return set(filter(lambda x: re.match(GM.LUT_in_pattern, x.name), all_nodes))
-        elif type == 'FF_in':
-            return set(filter(lambda x: re.match(GM.FF_in_pattern, x.name), all_nodes))
-        elif type == 'FF_out':
-            return set(filter(lambda x: re.match(GM.FF_out_pattern, x.name), all_nodes))
-        elif type == 'CLB_out':
-            return set(filter(lambda x: re.match(GM.CLB_out_pattern, x.name), all_nodes))
-        elif type == 'CLB_muxed':
-            return set(filter(lambda x: re.match(GM.MUXED_CLB_out_pattern, x.name), all_nodes))
 
     def get_pips_length(self, coordinate):
         tile = f'INT_{coordinate}'
@@ -214,73 +125,34 @@ class Arch:
 
         for pip in pips:
             try:
-                path_in = nx.shortest_path(self.G, 's', pip[0], weight='weight')[1:]
-                path_out = nx.shortest_path(self.G, pip[1], 't', weight='weight')[:-1]
-                GM.pips_length_dict[(pip.u, pip.v)] = len(path_in + path_out)
+                path_in = nx.shortest_path(self.G, 's', pip.u, weight='weight')[1:]
+                path_out = nx.shortest_path(self.G, pip.v, 't', weight='weight')[:-1]
+                self.pips_length_dict[(pip.u, pip.v)] = len(path_in + path_out)
             except:
                 continue
 
         self.G.remove_nodes_from(['s', 't'])
 
-    @staticmethod
-    def get_tile(wire, delimiter='/'):
-        return wire.split(delimiter)[0]
-
-    @staticmethod
-    def get_port(wire, delimiter='/'):
-        return wire.split(delimiter)[1]
-
-    @staticmethod
-    def get_direction(clb_node):
-        if clb_node.startswith('CLEL_R'):
-            dir = 'E'
-        else:
-            dir = 'W'
-
-        return dir
-
-    @staticmethod
-    def get_slice_type(tile):
-        if tile.startswith('CLEM'):
-            return 'M'
-        else:
-            return 'L'
-
-    @staticmethod
-    def port_suffix(node):
-        return node.split('_SITE_0_')[-1]
-
-
-    def reconstruct_device(self, l, coord):
-        queue = list(GM.pips_length_dict)
-        if l > 1:
-            files = sorted(os.listdir(os.path.join(GM.store_path, f'iter{l - 1}')),
-                           key=lambda x: int(re.findall('\d+', x).pop()), reverse=False)
-            TC_last = load_data(os.path.join(GM.store_path, f'iter{l - 1}'), files[-1])
-            for edge in TC_last.G_dev.edges():
-                if edge in self.G.edges():
-                    if edge not in TC_last.G:
-                        continue  # route_thrus
-
-                    self.G.get_edge_data(*edge)['weight'] = TC_last.G.get_edge_data(*edge)['weight']
-
-            pips_dict = load_data(GM.Data_path, 'covered_pips_dict.data')
-            tile = f'INT_{coord}'
+    def get_queue(self, coordinate, load_path=None):
+        self.get_pips_length(coordinate)
+        queue = list(self.pips_length_dict)
+        if load_path is not None:
+            pips_dict = load_data(load_path, 'covered_pips_dict.data')
+            tile = f'INT_{coordinate}'
             pips = pips_dict[tile]
             pips = {(f'{tile}/{pip[0]}', f'{tile}/{pip[1]}') for pip in pips}
             queue = list(set(queue) - pips)
 
-
         return queue
 
     def reform_cost(self):
-        for edge in self.G.edges():
-            if self.get_tile(edge[0]) == self.get_tile(edge[1]):
-                if self.get_tile(edge[0]).startswith('CLE'):
-                    if re.match(Global_Module.MUXED_CLB_out_pattern, edge[0]) or re.match(Global_Module.MUXED_CLB_out_pattern, edge[1]):
+        for edge in self.get_edges():
+            if edge.type == 'pip':
+                if edge[0].tile_type == 'CLB':
+                    if any(map(lambda x: x.clb_node_type == 'CLB_muxed', edge)):
                         weight = 100
-                    elif re.match(Global_Module.LUT_in6_pattern, edge[0]):
-                        weight = 50
+                    elif edge[0].is_i6:
+                        weight = 100
                     else:
                         weight = 25  # CLB_Route_Thru
                 else:
@@ -292,13 +164,31 @@ class Arch:
 
     def blocking_nodes(self, CD, tile):
         #these are out mode nodes that have pips back to the INT tile
-        blocking_nodes = {node.name for node in self.get_nodes(tile=tile, mode='out') if self.G.out_degree(node.name)>1}
+        out_mode_nodes = (node for node in self.get_nodes() if node.get_INT_node_mode(self.G) == 'out')
+        blocking_nodes = {node.name for node in out_mode_nodes if self.G.out_degree(node.name)>1}
         valid_blocking_nodes = set()
         for node in blocking_nodes:
-            clb_neighs = list(
-                filter(lambda x: Node(x).clb_node_type == 'FF_in' and CD[Node(x).bel_group] != 'launch',
-                       self.G.neighbors(node)))
-            if clb_neighs:
+            if any(map(lambda x: Node(x).clb_node_type == 'FF_in' and CD[Node(x).bel_group] != 'launch', self.G.neighbors(node))):
                 valid_blocking_nodes.add(node)
 
         return valid_blocking_nodes
+
+    @staticmethod
+    def get_tile(wire, delimiter='/'):
+        return wire.split(delimiter)[0]
+
+    @staticmethod
+    def get_port(wire, delimiter='/'):
+        return wire.split(delimiter)[1]
+
+
+    @staticmethod
+    def get_slice_type(tile):
+        if tile.startswith('CLEM'):
+            return 'M'
+        else:
+            return 'L'
+
+    @staticmethod
+    def port_suffix(node):
+        return node.split('_SITE_0_')[-1]
