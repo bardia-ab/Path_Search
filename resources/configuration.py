@@ -611,7 +611,7 @@ class Configuration():
         return sorted(pips, key=lambda x: GM.pips_length_dict[x], reverse=True)
 
     def finish_TC(self, queue, pbar, free_cap=8):
-        #capacity = free_cap - len(self.CUTs)
+        #occupancy = free_cap - len(self.CUTs)
         l_covered_pips = 3424 - len(queue)
         cond2 = time.time() - self.start_TC_time > (self.long_TC_process_time + 15 * (l_covered_pips // 1000))
         cond3 = not queue

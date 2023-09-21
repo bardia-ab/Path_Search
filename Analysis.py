@@ -18,7 +18,7 @@ coord = 'X46Y90'
 G = load_data(GM.graph_path, f'G_ZU9_INT_{coord}.data')
 dev = Arch(G)
 dev.get_pips_length(coord)
-queue = list(GM.pips_length_dict)
+queue = list(dev.pips_length_dict)
 ################################
 if coord == 'X46Y90':
     GM.store_path = os.path.join(GM.store_path, 'iter1')

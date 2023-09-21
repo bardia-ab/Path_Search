@@ -3,23 +3,11 @@ from Functions import get_graph
 import networkx as nx
 from resources.node import Node
 def get_regex(node:Node) -> str:
-    regexp = re.sub('\d+', '#', node.name)
+
+    regexp = re.sub(r'(?<!EE|NN|SS|WW)(?<!\d)\d+', '#', node.name)
     regexp = re.sub('_[EW]_', '_[EW]_', regexp)
     regexp = re.sub('_[EW]#', '_[EW]#', regexp)
     regexp = re.sub('_(BLN|BLS)_', '_(BLN|BLS)_', regexp)
-    '''for match in re.compile('\d+').finditer(regexp):
-        if match.string[match.regs[0][0]-2:match.regs[0][0]] in {'EE', 'WW', 'SS', 'NN'}:
-            continue
-        else:
-            reg_list = list(regexp)
-            reg_list[match.regs[0][0]:match.regs[0][1]] = '#'
-            regexp = ''.join(reg_list)'''
-
-    '''if not re.match('.*(EE|NN|SS|WW)\d+.*', regexp):
-        regexp = re.sub('\d+', '#', regexp)
-    else:
-        pass'''
-
     regexp = regexp.replace('#', '\d+')
 
     return regexp

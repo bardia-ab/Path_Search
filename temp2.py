@@ -6,7 +6,7 @@ import networkx as nx
 from resources.node import *
 from resources.configuration import *
 from resources.arch_graph import Arch
-from resources.lut import LUT
+from resources.primitive import LUT, SubLUT_6, SubLUT_5
 import concurrent.futures
 from pympler import asizeof
 
@@ -24,26 +24,9 @@ dev.get_pips_length(coord)
 del G
 queue = dev.reconstruct_device(l, coord)'''
 
-'''lut1 = LUT('CLEM_X46Y90/A6LUT')
-lut1.inputs = Node('CLEM_X46Y90/CLE_CLE_M_SITE_0_A1')
-lut1.func = 'buffer'
-lut2 = LUT('CLEM_X46Y90/A5LUT')
-lut2.inputs = Node('CLEM_X46Y90/CLE_CLE_M_SITE_0_A2')
-lut2.func = 'not'
-lut2.cal_init()
 
-a = Node('CLEM_X46Y90/CLE_CLE_M_SITE_0_AMUX')
-lut2.output = a
 
-lut3 = LUT('CLEM_X46Y90/A6LUT')
-lut3.inputs = Node('CLEM_X46Y90/CLE_CLE_M_SITE_0_A1')
-lut3.func = 'buffer'
-lut4 = LUT('CLEM_X46Y90/A5LUT')
-lut4.inputs = Node('CLEM_X46Y90/CLE_CLE_M_SITE_0_A2')
-lut4.func = 'not'
-'''
-
-G1 = nx.DiGraph()
+'''G1 = nx.DiGraph()
 for edge in G.edges:
     weight = G.get_edge_data(*edge)['weight']
     G1.add_edge(Node(edge[0]), Node(edge[1]), weight=weight)
@@ -109,6 +92,6 @@ t2 = time.time()
 print(t2 - t1)
 
 print(asizeof.asizeof(paths))
-print(asizeof.asizeof(paths1))
+print(asizeof.asizeof(paths1))'''
 
 print('\n--- %s seconds ---' %(time.time() - start_time))
