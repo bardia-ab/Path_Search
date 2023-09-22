@@ -5,7 +5,6 @@ from joblib import Parallel, delayed
 
 start_time = time.time()
 
-TCs_path = r"C:\Users\t26607bb\Desktop\CPS_Project\Path_Search\Data\DLOC_dicts\iter1"
 #TC_file = 'TC0.data'
 store_path = os.path.join(GM.Data_path, 'Vivado_Sources')
 N_Parallel = 50
@@ -34,7 +33,7 @@ with open(os.path.join(GM.Data_path, 'TCs_path.txt'), 'w+') as file:
 TC_files = [file for file in os.listdir(TCs_path) if file.startswith('TC')]
 TC_files.sort(key=lambda x: int(re.findall('\d+', x)[0]))
 #tuple1 = (zip(TC_files[:10], ['-e', '-o', '-o', '-e', '', '', '' ,'' ,'' '']))
-Parallel(n_jobs=-1)(delayed(generate_constrate)(TCs_path, TC_file, store_path, N_Parallel, name_prefix) for TC_file in TC_files[:20])
+Parallel(n_jobs=-1)(delayed(generate_constrate)(TCs_path, TC_file, store_path, N_Parallel, name_prefix) for TC_file in TC_files)
 
 
 print('--- %s seconds ---' %(time.time() - start_time))
