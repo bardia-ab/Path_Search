@@ -133,6 +133,15 @@ class Arch:
 
         return remaining_pips
 
+    '''def coverage(self):
+        covered_pips_dict = load_data(GM.Data_path, 'covered_pips_dict.data')
+        remaining_pips_dict = self.get_remaining_pips_dict()
+        N_covered_pips = sum(len(val) for key, val in covered_pips_dict.items())
+        N_remaining_pips = sum(val for key, val in remaining_pips_dict.items())
+
+        return N_covered_pips * 100 /(N_covered_pips + N_remaining_pips)'''
+
+
     def get_pips(self, INT):
         pips = set()
         for pip in self.pips:

@@ -1,0 +1,29 @@
+#-----------------------------------------------------------
+# Vivado v2021.1 (64-bit)
+# SW Build 3247384 on Thu Jun 10 19:36:07 MDT 2021
+# IP Build 3246043 on Fri Jun 11 00:30:35 MDT 2021
+# Start of session at: Thu Sep 28 18:51:54 2023
+# Process ID: 605114
+# Current directory: /home/bardia/Desktop/Path_Search
+# Command line: vivado -mode tcl
+# Log file: /home/bardia/Desktop/Path_Search/vivado.log
+# Journal file: /home/bardia/Desktop/Path_Search/vivado.jou
+#-----------------------------------------------------------
+glob /home/bardia/Desktop/bardia/Timing_Characterization/Data/Bitsreams *
+D_CUT_Analysis.py temp2.py init.json remove_invalid_TCs.py const_gen_wrapper.py Functions.py sched.py regen_invalid_TCs.py wrapper.py FASM_Swapping.py FASM_Generation.py FASM_prev.py Compressed_Graph.py pip_mid_dict.data Global_Module.py vivado.log tcl_sources const_gen.py venv Relocate_CUTs.py resources vivado.jou __pycache__ run_pyteman.py Results dummy_collision.py relocation Analysis.py dummy.py temp.py
+glob {/home/bardia/Desktop/bardia/Timing_Characterization/Data/Bitsreams} *
+D_CUT_Analysis.py temp2.py init.json remove_invalid_TCs.py const_gen_wrapper.py Functions.py sched.py regen_invalid_TCs.py wrapper.py FASM_Swapping.py FASM_Generation.py FASM_prev.py Compressed_Graph.py pip_mid_dict.data Global_Module.py vivado.log tcl_sources const_gen.py venv Relocate_CUTs.py resources vivado.jou __pycache__ run_pyteman.py Results dummy_collision.py relocation Analysis.py dummy.py temp.py
+glob {/home/bardia/Desktop/bardia/Timing_Characterization/Data} *
+/home/bardia/Desktop/bardia/Timing_Characterization/Data D_CUT_Analysis.py temp2.py init.json remove_invalid_TCs.py const_gen_wrapper.py Functions.py sched.py regen_invalid_TCs.py wrapper.py FASM_Swapping.py FASM_Generation.py FASM_prev.py Compressed_Graph.py pip_mid_dict.data Global_Module.py vivado.log tcl_sources const_gen.py venv Relocate_CUTs.py resources vivado.jou __pycache__ run_pyteman.py Results dummy_collision.py relocation Analysis.py dummy.py temp.py
+cwd
+invalid command name "cwd"
+pwd
+/home/bardia/Desktop/Path_Search
+glob -directory {/home/bardia/Desktop/bardia/Timing_Characterization/Data} *
+/home/bardia/Desktop/bardia/Timing_Characterization/Data/wires_dict2.data {/home/bardia/Desktop/bardia/Timing_Characterization/Data/No-Path Ports} /home/bardia/Desktop/bardia/Timing_Characterization/Data/Load /home/bardia/Desktop/bardia/Timing_Characterization/Data/Bitstreams /home/bardia/Desktop/bardia/Timing_Characterization/Data/Vivado_Sources /home/bardia/Desktop/bardia/Timing_Characterization/Data/pips.data /home/bardia/Desktop/bardia/Timing_Characterization/Data/Results /home/bardia/Desktop/bardia/Timing_Characterization/Data/covered_pips_dict.data /home/bardia/Desktop/bardia/Timing_Characterization/Data/remaining_pips.data /home/bardia/Desktop/bardia/Timing_Characterization/Data/DLOC_dicts.zip /home/bardia/Desktop/bardia/Timing_Characterization/Data/DCPs.zip /home/bardia/Desktop/bardia/Timing_Characterization/Data/TCs_path.txt /home/bardia/Desktop/bardia/Timing_Characterization/Data/DLOC_dicts /home/bardia/Desktop/bardia/Timing_Characterization/Data/Store /home/bardia/Desktop/bardia/Timing_Characterization/Data/Bitstreams.zip {/home/bardia/Desktop/bardia/Timing_Characterization/Data/Compressed Graphs} /home/bardia/Desktop/bardia/Timing_Characterization/Data/even_odd /home/bardia/Desktop/bardia/Timing_Characterization/Data/test /home/bardia/Desktop/bardia/Timing_Characterization/Data/DCPs /home/bardia/Desktop/bardia/Timing_Characterization/Data/iter32.zip /home/bardia/Desktop/bardia/Timing_Characterization/Data/Store.zip
+llength [glob -directory {/home/bardia/Desktop/bardia/Timing_Characterization/Data/Bitsreams} *]
+no files matched glob pattern "*"
+llength [glob -directory {/home/bardia/Desktop/bardia/Timing_Characterization/Data/Bitsreams} *.bit]
+no files matched glob pattern "*.bit"
+glob -directory {/home/bardia/Desktop/bardia/Timing_Characterization/Data/Bitsreams} *
+no files matched glob pattern "*"

@@ -8,6 +8,8 @@ proc gen_bit {Proj_Dir Src_Dir Store_path folder_name N_Parallel} {
 	set bd_file "$Proj_Dir/$ProjName\.srcs/sources_1/bd/design_1/design_1.bd"
 	set bitstream_file "$Store_path/Bitstreams/$folder_name\.bit"
 	set DCP_file "$Store_path/DCPs/$folder_name\.dcp"
+	#set logfile "$Proj_Dir/$ProjName\.runs/impl_1/runme.log"
+	#set logfile_dest "$Store_path/Logs/$folder_name\.log"
 
 	delete_runs synth_1
 
@@ -33,8 +35,10 @@ proc gen_bit {Proj_Dir Src_Dir Store_path folder_name N_Parallel} {
 	validate_bd_design
 	catch {launch_runs impl_1 -jobs 12}
 	catch {wait_on_run impl_1}
+	#file copy $logfile $logfile_dest
 	set_param xicom.use_bitstream_version_check false
 	open_run impl_1
+	set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
 	write_bitstream -force $bitstream_file
 	write_checkpoint -force $DCP_file
 
@@ -68,19 +72,35 @@ set Src_Dir [lindex $argv 0]
 set Proj_Dir [lindex $argv 1]
 set Store_path [lindex $argv 2]
 set ProjName [lindex [split "$Proj_Dir" /] end]
+set logfile "$Proj_Dir/$ProjName\.runs/impl_1/runme.log"
+
 open_project "$Proj_Dir/$ProjName\.xpr"
 set_msg_config -severity {CRITICAL WARNING} -new_severity ERROR
 if {[lindex $argv 6] == {None}} {
 	for {set i [lindex $argv 3]} {$i < [lindex $argv 4]} {incr i} {
 		set folder_name "TC$i"
 		catch {gen_bit $Proj_Dir $Src_Dir $Store_path $folder_name [lindex $argv 5]}
+		set logfile_dest "$Store_path/Logs/$folder_name\.log"
+		catch {file copy $logfile $logfile_dest}
+	}
+} elseif {[lindex $argv 6] == {custom}} {
+    set TCs [glob -dir $Src_Dir *]
+    set TCs [lsort $TCs]
+    foreach TC $TCs {
+		set folder_name [lindex [wsplit $TC "/"] end]
+		catch {gen_bit $Proj_Dir $Src_Dir $Store_path $folder_name [lindex $argv 5]}
+		set logfile_dest "$Store_path/Logs/$folder_name\.log"
+		catch {file copy $logfile $logfile_dest}
 	}
 } else {
 	set TCs_even_odd [glob -dir $Src_Dir *even]
 	lappend TCs_even_odd {*}[glob -dir $Src_Dir *odd]
+	set TCs_even_odd [lsort $TCs_even_odd]
 	foreach TC_even_odd $TCs_even_odd {
 		set folder_name [lindex [wsplit $TC_even_odd "/"] end]
 		catch {gen_bit $Proj_Dir $Src_Dir $Store_path $folder_name [lindex $argv 5]}
+		set logfile_dest "$Store_path/Logs/$folder_name\.log"
+		catch {file copy $logfile $logfile_dest}
 	}
 }
 

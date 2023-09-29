@@ -493,6 +493,23 @@ def gen_rtl(TC_file, TCs_path, store_path, N_Parallel, name_prefix, slices_dict,
     VHDL_file.print(os.path.join(src_path, 'CUTs.vhd'))
     print(f'TC{TC_idx} is done.')
 
+def split_function(D_CUT, method):
+    if method == 'x':
+        return int(re.findall('\d+', D_CUT.origin)[0]) % 2
+    elif method == 'y':
+        return int(re.findall('\d+', D_CUT.origin)[1]) % 2
+    elif method == 'CUT_index':
+        return D_CUT.index % 2
+    elif method == 'FF_in_index':
+        return Node(next(filter(lambda x: re.match(GM.FF_in_pattern, x), D_CUT.G))).index % 2
+    else:
+        raise ValueError(f'Method {method} is invalid')
+
+def split_D_CUTs(TC, method):
+    D_CUTs_even = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if split_function(D_CUT, method) == 0]
+    D_CUTs_odd = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if split_function(D_CUT, method) == 1]
+
+    return D_CUTs_even, D_CUTs_odd
 
 class Cell:
     cells = []

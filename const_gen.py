@@ -2,7 +2,7 @@ import re, os, sys, getopt
 from math import ceil
 import Global_Module as GM
 from relocation.relative_location import DLOC
-from resources.constraint import VHDL, Cell, load_data, create_folder, get_instantiation
+from resources.constraint import VHDL, Cell, load_data, create_folder, get_instantiation, split_D_CUTs
 
 #Usage: python3 const_gen.py TCs_path TC_file store_path N_Parallel name_prefix [-e] [-o]
 ################## User Inputs ###################
@@ -36,11 +36,11 @@ TC_file = TC_file.split('.')[0]
 if not opts:
     D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs]
 elif opts[0][0] == '-e':
-    TC_file =  f'{TC_file}_even'
-    D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[0]) % 2 == 0]
+    TC_file = f'{TC_file}_even'
+    D_CUTs, _ = split_D_CUTs(TC, 'FF_in_index')
 elif opts[0][0] == '-o':
-    TC_file =  f'{TC_file}_odd'
-    D_CUTs = [D_CUT for R_CUT in TC.CUTs for D_CUT in R_CUT.D_CUTs if int(re.findall('\d+', D_CUT.origin)[0]) % 2 == 1]
+    TC_file = f'{TC_file}_odd'
+    _, D_CUTs = split_D_CUTs(TC, 'FF_in_index')
 else:
     exit()
 

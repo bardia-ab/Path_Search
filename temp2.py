@@ -1,35 +1,15 @@
-import time, re, os, pickle
-
-import Global_Module
-from Functions import *
-import networkx as nx
-from resources.node import *
-from resources.tile import *
-from resources.edge import *
-from resources.path import *
-from resources.cut import *
-from resources.primitive import *
-from resources.configuration import *
-from resources.arch_graph import Arch
-import resources.validation as vd
-from itertools import product
-import resources.reconstruction as recon
-from tqdm import tqdm, trange
-import concurrent.futures
+import os, time, re
+import Global_Module as GM
+from Functions import load_data, store_data
+from resources.constraint import split_D_CUTs
 
 start_time = time.time()
-#coord = sys.argv[1]
-coord = 'X46Y90'
-tile = f'INT_{coord}'
-l = 1 if coord == 'X46Y90' else len(os.listdir(GM.store_path)) + 1
-################
-graph_path = os.path.join(GM.graph_path, f'G_ZU9_INT_{coord}.data')
-G = load_data(GM.graph_path, f'G_ZU9_INT_{coord}.data')
+TCs_path = os.path.join(GM.DLOC_path, 'iter32')
+TC_files = [file for file in os.listdir(TCs_path) if file.startswith('TC')]
+for TC_file in TC_files:
+    TC = load_data(TCs_path, TC_file)
+    D_CUT_even, D_CUT_odd = split_D_CUTs(TC, 'FF_in_index')
+    print(f'Even= {len(D_CUT_even)}\tOdd= {len(D_CUT_odd)}')
 
 
-
-dev = Arch(G)
-dev.get_pips_length(coord)
-del G
-queue = dev.reconstruct_device(l, coord)
 print('\n--- %s seconds ---' %(time.time() - start_time))
