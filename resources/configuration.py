@@ -317,7 +317,8 @@ class Configuration():
                     global_nodes.update(device.get_nodes(port=node.port))
                 else:
                     global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))'''
-                global_nodes = device.get_gnodes(node.name)
+                #global_nodes = device.get_gnodes(node.name)
+                global_nodes.update(device.get_gnodes(node.name))
 
             global_nodes = global_nodes - set(path)
             if GM.block_mode == 'global':

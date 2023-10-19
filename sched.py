@@ -4,14 +4,14 @@ from Functions import create_folder, load_data
 from resources.constraint import gen_rtl
 
 def job():
-    Src_Dir = r'/home/bardia/Desktop/bardia/Timing_Characterization/Data/Vivado_Sources'
+    Src_Dir = r'/home/bardia/Desktop/bardia/Timing_Characterization/CR_X2Y1/Vivado_Sources'
     Proj_Dir = r'/home/bardia/Desktop/bardia/FPGA_Projects/CPS_Parallel_ZCU9'
-    Store_path = r'/home/bardia/Desktop/bardia/Timing_Characterization/Data'
+    Store_path = r'/home/bardia/Desktop/bardia/Timing_Characterization/CR_X2Y1'
     N_Parallel = 50
     create_folder(os.path.join(Store_path, 'Bitstreams'))
     create_folder(os.path.join(Store_path, 'DCPs'))
     create_folder(os.path.join(Store_path, 'Logs'))
-    os.system(f'python3 const_gen_wrapper.py')
+    os.system(f'python3 const_gen_wrapper.py {Store_path}')
     with open(os.path.join(GM.Data_path, 'TCs_path.txt')) as file:
         TCs_path = file.read().rstrip('\n')
 
@@ -47,20 +47,4 @@ while True:
     schedule.run_pending()
     time.sleep(1)'''
 
-Src_Dir = '/home/bardia/Desktop/bardia/Timing_Characterization/Data/even_odd'
-Store_path = '/home/bardia/Desktop/bardia/Timing_Characterization/Data/even_odd'
-Proj_Dir = r'/home/bardia/Desktop/bardia/FPGA_Projects/CPS_Parallel_ZCU9'
-TCs_path = '/home/bardia/Desktop/bardia/Timing_Characterization/Data/DLOC_dicts/iter32'
-N_Parallel = 50
-N_TCs = len(os.listdir(TCs_path))
-name_prefix = 'design_1_i/top_0/U0/Inst/CUTs_Inst/CUT_{}/{}'
-#create_folder(Src_Dir)
-failed_TCs = [f'TC{idx}.data' for idx in {18, 59, 106, 109, 126, 133, 154, 159, 172}]
-'''for TC_file in failed_TCs:
-    os.system(f'python const_gen.py {TCs_path} {TC_file} {Src_Dir} {N_Parallel} {name_prefix} -e')
-    os.system(f'python const_gen.py {TCs_path} {TC_file} {Src_Dir} {N_Parallel} {name_prefix} -o')'''
-
-create_folder(os.path.join(Store_path, 'Bitstreams'))
-create_folder(os.path.join(Store_path, 'DCPs'))
-create_folder(os.path.join(Store_path, 'Logs'))
-os.system(f'vivado -mode batch -nolog -nojournal -source ./tcl_sources/gen_bit.tcl -tclargs "{Src_Dir}" "{Proj_Dir}" "{Store_path}" "0" "{N_TCs}" "{N_Parallel}" "even"')
+job()

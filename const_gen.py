@@ -1,6 +1,7 @@
 import re, os, sys, getopt
 from math import ceil
 import Global_Module as GM
+from Functions import store_data
 from relocation.relative_location import DLOC
 from resources.constraint import VHDL, Cell, load_data, create_folder, get_instantiation, split_D_CUTs
 
@@ -46,6 +47,13 @@ else:
 
 src_path = os.path.join(store_path, TC_file)
 create_folder(src_path)
+if opts:
+    try:
+        store_data(src_path, 'D_CUTs.data', D_CUTs)
+    except:
+        print('Error')
+        exit()
+
 D_CUTs.sort(key=lambda x: x.index * 10000 + DLOC.get_x_coord(x.origin) * 1000 + DLOC.get_y_coord(x.origin))
 ########################################################
 N_Segments = ceil(len(D_CUTs) / N_Parallel)

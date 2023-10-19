@@ -1,4 +1,4 @@
-import os, re, time, filecmp
+import os, re, time, filecmp, sys
 import Global_Module as GM
 from Functions import load_data, create_folder
 from joblib import Parallel, delayed
@@ -6,7 +6,7 @@ from joblib import Parallel, delayed
 start_time = time.time()
 
 #TC_file = 'TC0.data'
-store_path = os.path.join(GM.Data_path, 'Vivado_Sources')
+store_path = os.path.join(sys.argv[1], 'Vivado_Sources')
 N_Parallel = 50
 name_prefix = 'design_1_i/top_0/U0/Inst/CUTs_Inst/CUT_{}/{}'
 slices_dict = load_data(GM.load_path, 'clb_site_dict2.data')
