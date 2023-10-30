@@ -1,15 +1,31 @@
-import os, time, re
-import Global_Module as GM
-from Functions import load_data, store_data
-from resources.constraint import split_D_CUTs
-
+import time, os, shutil
+from Functions import create_folder
 start_time = time.time()
-TCs_path = os.path.join(GM.DLOC_path, 'iter32')
-TC_files = [file for file in os.listdir(TCs_path) if file.startswith('TC')]
-for TC_file in TC_files:
-    TC = load_data(TCs_path, TC_file)
-    D_CUT_even, D_CUT_odd = split_D_CUTs(TC, 'FF_in_index')
-    print(f'Even= {len(D_CUT_even)}\tOdd= {len(D_CUT_odd)}')
 
+Src_Dir = r'/home/bardia/Desktop/bardia/Timing_Characterization/Data/Vivado_Sources'
+Proj_Dir = r'/home/bardia/Desktop/bardia/FPGA_Projects/CPS_Parallel_ZCU9'
+Store_path = r'/home/bardia/Desktop/bardia/Timing_Characterization/Data'
+DLOC_path = os.path.join(Store_path, 'DLOC_dicts')
+load_path = os.path.join(Store_path, 'Load')
+result_path = os.path.join(Store_path, 'Results')
+Failed_path = os.path.join(Store_path, 'Failed')
+create_folder(Failed_path)
 
-print('\n--- %s seconds ---' %(time.time() - start_time))
+TCs = set()
+files = ['Errors.txt', 'validation.txt']
+for file in files:
+    with open(os.path.join(result_path, file)) as txt:
+        for line in txt.readlines():
+            if line == '\n':
+                continue
+
+            TC = line.split(' => ')[0]
+            TCs.add(TC)
+for TC in TCs:
+    src_dir = os.path.join(Src_Dir, TC)
+    dest_dir = os.path.join(Failed_path, TC)
+    shutil.copytree(src_dir, dest_dir)
+
+N_Parallel = 50
+os.system(f'vivado -mode batch -nolog -nojournal -source ./tcl_sources/gen_bit.tcl -tclargs "{Failed_path}" "{Proj_Dir}" "{Store_path}" "0" "{0}" "{N_Parallel}" "custom"')
+print('--- %s seconds ---' %(time.time() - start_time))
