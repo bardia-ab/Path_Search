@@ -4,21 +4,21 @@ from Functions import create_folder, load_data
 from resources.constraint import gen_rtl
 
 def job():
-    Src_Dir = r'/home/bardia/Desktop/bardia/Timing_Characterization/CR_X2Y1/Vivado_Sources'
+    Src_Dir = r'/home/bardia/Desktop/bardia/Timing_Characterization/Data/Vivado_Sources'
     Proj_Dir = r'/home/bardia/Desktop/bardia/FPGA_Projects/CPS_Parallel_ZCU9'
-    Store_path = r'/home/bardia/Desktop/bardia/Timing_Characterization/CR_X2Y1'
+    Store_path = r'/home/bardia/Desktop/bardia/Timing_Characterization/Data'
     DLOC_path = os.path.join(Store_path, 'DLOC_dicts')
     load_path = os.path.join(Store_path, 'Load')
     N_Parallel = 50
-    '''create_folder(os.path.join(Store_path, 'Bitstreams'))
+    create_folder(os.path.join(Store_path, 'Bitstreams'))
     create_folder(os.path.join(Store_path, 'DCPs'))
     create_folder(os.path.join(Store_path, 'Logs'))
-    os.system(f'python3 const_gen_wrapper.py {Store_path}')'''
+    os.system(f'python3 const_gen_wrapper.py {Store_path}')
     with open(os.path.join(Store_path, 'TCs_path.txt')) as file:
         TCs_path = file.read().rstrip('\n')
 
     N_TCs = len(os.listdir(TCs_path))
-    os.system(f'vivado -mode batch -nolog -nojournal -source ./tcl_sources/gen_bit.tcl -tclargs "{Src_Dir}" "{Proj_Dir}" "{Store_path}" "0" "{6}" "{N_Parallel}" "None"')
+    os.system(f'vivado -mode batch -nolog -nojournal -source ./tcl_sources/gen_bit.tcl -tclargs "{Src_Dir}" "{Proj_Dir}" "{Store_path}" "0" "{N_TCs}" "{N_Parallel}" "None"')
     files = filter(lambda x: x.startswith('vivado'), os.listdir(os.getcwd()))
     for file in files:
         os.remove(file)

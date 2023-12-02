@@ -22,7 +22,7 @@ covered_pips_dict = load_data(os.path.join(GM.DLOC_path, f'iter{l-1}'), 'covered
 Configuration.covered_pips_dict = covered_pips_dict.copy()
 
 device = Arch('ZCU9')
-INTs = device.limit(20, 37, 300, 359) if l == 1 else device.remove_covered_INTs()
+INTs = device.limit(0, 65, 0, 419) if l == 1 else device.remove_covered_INTs()
 INTs = device.sort_INTs(INTs, tile)
 
 files = sorted(os.listdir(store_path), key=lambda x: int(re.findall('\d+', x).pop()), reverse=False)
@@ -78,7 +78,7 @@ for idx, file in enumerate(files):
     pbar.set_description(f'TC{TC_idx}')
 
 
-Configuration.sort_covered_pips(20, 37, 300, 359)
+Configuration.sort_covered_pips(0, 65, 0, 419)
 store_data(GM.Data_path, 'covered_pips_dict.data', Configuration.covered_pips_dict)
 store_data(DLOC_path, 'covered_pips_dict.data', Configuration.covered_pips_dict)
 

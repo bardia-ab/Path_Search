@@ -120,6 +120,9 @@ class Configuration():
 
                 node = node.name
 
+            if node in self.reconst_block_nodes:
+                continue
+
             try:
                 self._block_nodes.remove(node)
             except:
@@ -132,6 +135,9 @@ class Configuration():
 
     def add_edges(self, *edges, device=None, weight=None):
         for edge in edges:
+            if edge[1] in self.G_TC:
+                continue
+
             if {edge[0], edge[1]} & self.reconst_block_nodes:
                 continue
 
@@ -208,6 +214,7 @@ class Configuration():
             else:
                 global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))'''
             global_nodes = device.get_gnodes(node.name)
+            #global_nodes.update(device.get_gnodes(node.name))
 
         global_nodes = global_nodes - set(path)
         if GM.block_mode == 'global':
@@ -317,8 +324,8 @@ class Configuration():
                     global_nodes.update(device.get_nodes(port=node.port))
                 else:
                     global_nodes.update(device.get_nodes(bel_group=node.bel_group, port_suffix=node.port_suffix))'''
-                #global_nodes = device.get_gnodes(node.name)
-                global_nodes.update(device.get_gnodes(node.name))
+                global_nodes = device.get_gnodes(node.name)
+                #global_nodes.update(device.get_gnodes(node.name))
 
             global_nodes = global_nodes - set(path)
             if GM.block_mode == 'global':
