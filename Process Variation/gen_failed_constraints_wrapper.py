@@ -106,6 +106,67 @@ def gen_CR_TC_sources(CR, DLOC_path, TC_file, opts, vivado_src_path, N_Parallel,
     D_CUTs.sort(key=lambda x: (x.index, x.get_x_coord(x.origin), x.get_y_coord(x.origin)))
     fill_VHDL(TC, D_CUTs, slices_dict, VHDL_file, N_Parallel, name_prefix, store_path)
 
+def regen_TC_failed_bitstream(device, Data_path, pbar):
+    DLOC_path = os.path.join(Data_path, 'split_TCs')
+    store_path = os.path.join(Data_path, 'Vivado_Sources_local')
+    result_path = os.path.join(Data_path, 'Results')
+    bitstreams_path = os.path.join(Data_path, 'Bitstreams')
+    logs_path = os.path.join(Data_path, 'Logs')
+
+    for CR in device.get_CRs():
+        DLOC_path_CR = os.path.join(DLOC_path, CR.name)
+        bitstreams_CR_path = os.path.join(bitstreams_path, CR.name)
+        logs_CR_path = os.path.join(logs_path, CR.name)
+        if len(os.listdir(bitstreams_CR_path)) == len(os.listdir(DLOC_path_CR)):
+            continue
+
+        CR_folder = os.path.join(store_path, CR.name)
+        create_folder(os.path.join(CR_folder, 'Split_Sources'))
+        bitstreams = {file.split('.')[0] for file in os.listdir(bitstreams_CR_path)}
+        logs = {file.split('.')[0] for file in os.listdir(logs_CR_path)}
+        TC_files = [f'{file}.data' for file in logs - bitstreams]
+        #gen_CR_TC_sources(CR, DLOC_path_CR, TC_files[0], opts, store_path, N_Parallel, name_prefix)
+        opts = '-e'
+        Parallel(n_jobs=-1)(delayed(gen_CR_TC_sources)(CR, DLOC_path_CR, TC_file, opts, store_path, N_Parallel, name_prefix) for TC_file in TC_files)
+        opts = '-o'
+        Parallel(n_jobs=-1)(delayed(gen_CR_TC_sources)(CR, DLOC_path_CR, TC_file, opts, store_path, N_Parallel, name_prefix) for TC_file in TC_files)
+        pbar.update(1)
+
+
+def regen_TC_invalid_result(device, Data_path, pbar):
+    DLOC_path = os.path.join(Data_path, 'split_TCs')
+    store_path = os.path.join(Data_path, 'Vivado_Sources_local')
+    result_path = os.path.join(Data_path, 'Results')
+
+    for CR in device.get_CRs():
+        DLOC_path_CR = os.path.join(DLOC_path, CR.name)
+        TCs = set()
+        files = ['Errors.txt', 'validation.txt']
+        for file in files:
+            CR_results = os.path.join(result_path, CR.name)
+            with open(os.path.join(CR_results, file)) as txt:
+                for line in txt.readlines():
+                    if line == '\n':
+                        continue
+
+                    TC = line.split(' => ')[0]
+                    TCs.add(TC)
+
+        CR_folder = os.path.join(store_path, CR.name)
+        if TCs and 'Split_Sources' not in os.listdir(CR_folder):
+            create_folder(os.path.join(CR_folder, 'Split_Sources'))
+
+        TC_files = [f'{file}.data' for file in TCs]
+        opts = '-e'
+        Parallel(n_jobs=-1)(
+            delayed(gen_CR_TC_sources)(CR, DLOC_path_CR, TC_file, opts, store_path, N_Parallel, name_prefix) for TC_file
+            in TC_files)
+        opts = '-o'
+        Parallel(n_jobs=-1)(
+            delayed(gen_CR_TC_sources)(CR, DLOC_path_CR, TC_file, opts, store_path, N_Parallel, name_prefix) for TC_file
+            in TC_files)
+        pbar.update(1)
+
 ###########
 opts= []
 N_Parallel = 50
@@ -121,50 +182,9 @@ logs_path = os.path.join(Data_path, 'Logs')
 device =Arch('ZCU9')
 pbar = tqdm(total=len(device.get_CRs()))
 
-'''for CR in device.get_CRs():
-    DLOC_path_CR = os.path.join(DLOC_path, CR.name)
-    bitstreams_CR_path = os.path.join(bitstreams_path, CR.name)
-    logs_CR_path = os.path.join(logs_path, CR.name)
-    if len(os.listdir(bitstreams_CR_path)) == len(os.listdir(DLOC_path_CR)):
-        continue
-
-    CR_folder = os.path.join(store_path, CR.name)
-    create_folder(os.path.join(CR_folder, 'Split_Sources'))
-    bitstreams = {file.split('.')[0] for file in os.listdir(bitstreams_CR_path)}
-    logs = {file.split('.')[0] for file in os.listdir(logs_CR_path)}
-    TC_files = [f'{file}.data' for file in logs - bitstreams]
-    #gen_CR_TC_sources(CR, DLOC_path_CR, TC_files[0], opts, store_path, N_Parallel, name_prefix)
-    opts = '-e'
-    Parallel(n_jobs=-1)(delayed(gen_CR_TC_sources)(CR, DLOC_path_CR, TC_file, opts, store_path, N_Parallel, name_prefix) for TC_file in TC_files)
-    opts = '-o'
-    Parallel(n_jobs=-1)(delayed(gen_CR_TC_sources)(CR, DLOC_path_CR, TC_file, opts, store_path, N_Parallel, name_prefix) for TC_file in TC_files)
-    pbar.update(1)'''
-
+# Failed Bitstreams
+regen_TC_failed_bitstream(device, Data_path, pbar)
 # Errors & validation
-for CR in device.get_CRs():
-    DLOC_path_CR = os.path.join(DLOC_path, CR.name)
-    TCs = set()
-    files = ['Errors.txt', 'validation.txt']
-    for file in files:
-        CR_results = os.path.join(result_path, CR.name)
-        with open(os.path.join(CR_results, file)) as txt:
-            for line in txt.readlines():
-                if line == '\n':
-                    continue
-
-                TC = line.split(' => ')[0]
-                TCs.add(TC)
-
-    CR_folder = os.path.join(store_path, CR.name)
-    if TCs and 'Split_Sources' not in os.listdir(CR_folder):
-        create_folder(os.path.join(CR_folder, 'Split_Sources'))
-
-    TC_files = [f'{file}.data' for file in TCs]
-    opts = '-e'
-    Parallel(n_jobs=-1)(delayed(gen_CR_TC_sources)(CR, DLOC_path_CR, TC_file, opts, store_path, N_Parallel, name_prefix) for TC_file in TC_files)
-    opts = '-o'
-    Parallel(n_jobs=-1)(delayed(gen_CR_TC_sources)(CR, DLOC_path_CR, TC_file, opts, store_path, N_Parallel, name_prefix) for TC_file in TC_files)
-    pbar.update(1)
-
+regen_TC_invalid_result(device, Data_path, pbar)
 
 print(f'--- {time.time() - start_time} seconds ---')
