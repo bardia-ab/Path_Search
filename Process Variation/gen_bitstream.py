@@ -32,7 +32,7 @@ def job():
         create_folder(os.path.join(DCP_path, cr))
         create_folder(os.path.join(log_path, cr))
         os.system(
-            f'vivado -mode batch -nolog -nojournal -source ./gen_bit.tcl -tclargs "{CR_Dir}" "{Proj_Dir}" "{Work_Dir}" "{cr}" "start_index" "{N_TCs}" "{N_Parallel}" "None"')
+            f'vivado -mode batch -nolog -nojournal -source ./gen_bit.tcl -tclargs "{CR_Dir}" "{Proj_Dir}" "{Work_Dir}" "{cr}" "{start_index}" "{N_TCs}" "{N_Parallel}" "None"')
 
     print(f'--- {time.time() - start_time} seconds ---')
 
