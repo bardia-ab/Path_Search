@@ -1,4 +1,4 @@
-import heapq, os
+import heapq, os, copy
 
 import Global_Module
 from resources.tile import *
@@ -302,3 +302,69 @@ class Arch:
                 valid_blocking_nodes.add(node)
 
         return valid_blocking_nodes
+
+    @staticmethod
+    def get_other_half_group(group):
+        half_dict = {'T': 'B', 'B': 'T'}
+        direc_dict = {'E': 'W', 'W': 'E'}
+
+        return f'{group[0]}_{half_dict[group[-1]]}'
+
+    def get_local_pips(self, coordinate):
+        desired_tile = 'INT_' + coordinate
+        G = copy.deepcopy(self.G)
+        invalid_nodes = [node for node in G if Node(node).coordinate != coordinate]
+        G.remove_nodes_from(invalid_nodes)
+        G_copy = copy.deepcopy(G)
+
+        pips = {edge for edge in G.edges if Arch.get_tile(edge[0]) == Arch.get_tile(edge[1]) == desired_tile}
+        all_sources = list(filter(GM.Source_pattern.match, G))
+        all_sinks = list(filter(GM.Sink_pattern.match, G))
+        groups = ['W_T', 'W_B', 'E_T', 'E_B']
+        covered_pips = set()
+
+        for group in groups:
+            other_group = Arch.get_other_half_group(group)
+            sources = {node for node in all_sources if Node(node).bel_group == group}
+            sinks = {node for node in all_sinks if Node(node).bel_group == other_group}
+            forbidden_nodes = {node for node in G if Node(node).bel_group if Node(node).bel_group[0] != group[0]}
+            G.remove_nodes_from(forbidden_nodes)
+
+            edges = set(product({'s'}, sources))
+            for edge in edges:
+                G.add_edge(*edge, weight=0)
+
+            edges = set(product(sinks, {'t'}))
+            for edge in edges:
+                G.add_edge(*edge, weight=0)
+
+            if not (sources and sinks):
+                continue
+
+            pip_u = {pip[0] for pip in pips}
+            pip_v = {pip[1] for pip in pips}
+
+            no_path_ports = set()
+            for node in pip_u:
+                if not nx.has_path(G, 's', node):
+                    no_path_ports.add(node)
+
+            for node in pip_v:
+                if not nx.has_path(G, node, 't'):
+                    no_path_ports.add(node)
+
+            excess_edges = set()
+            for node in no_path_ports:
+                excess_edges.update(G.in_edges(node))
+                excess_edges.update(G.out_edges(node))
+
+            G.remove_edges_from(excess_edges)
+            queue = pips - excess_edges
+
+            for pip in pips:
+                if nx.has_path(G, 's', pip[0]) and nx.has_path(G, pip[1], 't'):
+                    covered_pips.add(pip)
+
+            G = copy.deepcopy(G_copy)
+
+        return covered_pips
