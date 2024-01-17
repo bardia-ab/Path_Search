@@ -81,3 +81,6 @@ class CR:
             extend_dict(CR_tile_dict, clock_region, tile)
 
         return CR_tile_dict
+
+    def get_coordinates(self):
+        return {re.findall('X-*\d+Y-*\d+', tile)[0] for tile in self.tiles}

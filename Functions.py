@@ -48,6 +48,10 @@ def get_tile (wire, delimiter='/'):
 def get_port (wire, delimiter='/'):
     return wire.split(delimiter)[1]
 
+def get_coordinate(node):
+    return re.findall('X-*\d+Y-*\d+', node)[0]
+
+
 def get_coord_graph(coord):
     G = nx.DiGraph()
     root = r'C:\Users\t26607bb\Desktop\graph'
