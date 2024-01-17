@@ -27,11 +27,12 @@ def job():
     for cr in CRs:
         CR_Dir = os.path.join(Src_Dir, cr)
         N_TCs = len(list(os.listdir(CR_Dir)))
+        start_index = 0
         create_folder(os.path.join(bitstream_path, cr))
         create_folder(os.path.join(DCP_path, cr))
         create_folder(os.path.join(log_path, cr))
         os.system(
-            f'vivado -mode batch -nolog -nojournal -source ./gen_bit.tcl -tclargs "{CR_Dir}" "{Proj_Dir}" "{Work_Dir}" "{cr}" "0" "{N_TCs}" "{N_Parallel}" "None"')
+            f'vivado -mode batch -nolog -nojournal -source ./gen_bit.tcl -tclargs "{CR_Dir}" "{Proj_Dir}" "{Work_Dir}" "{cr}" "start_index" "{N_TCs}" "{N_Parallel}" "None"')
 
     print(f'--- {time.time() - start_time} seconds ---')
 
